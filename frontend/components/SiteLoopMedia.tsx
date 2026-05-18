@@ -28,7 +28,8 @@ export function SiteLoopMedia() {
 
   if (!active) {
     return (
-      <div className="card border-cyan-100 bg-gradient-to-br from-white/95 to-cyan-50">
+      <div className="card overflow-hidden border-cyan-100 bg-gradient-to-br from-white/95 via-cyan-50 to-sky-50">
+        <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-cyan-200/40 blur-3xl" />
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-black text-slate-950">宗主放映位</h2>
           <span className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-bold text-cyan-700">管理员可配</span>
@@ -39,15 +40,33 @@ export function SiteLoopMedia() {
   }
 
   return (
-    <div className="card border-cyan-100 bg-gradient-to-br from-white/95 to-cyan-50">
+    <div className="card overflow-hidden border-cyan-100 bg-gradient-to-br from-white/95 via-cyan-50 to-sky-50">
+      <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-cyan-200/40 blur-3xl" />
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-black text-slate-950">宗主放映位</h2>
+        <div>
+          <h2 className="text-lg font-black text-slate-950">宗主放映位</h2>
+          <p className="mt-1 text-xs text-slate-500">小尺寸循环展示图像与短视频</p>
+        </div>
         <span className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-bold text-cyan-700">
           {items.length > 1 ? `${activeIndex + 1}/${items.length}` : '单条展示'}
         </span>
       </div>
-      <p className="mt-2 text-sm font-semibold text-slate-800">{active.title}</p>
-      <div className="mt-3 overflow-hidden rounded-[1.4rem] border border-cyan-100 bg-slate-950/5">
+      <div className="mt-3 rounded-[1.5rem] bg-white/70 p-3 shadow-sm">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-slate-800">{active.title}</p>
+          <div className="flex gap-1.5">
+            {items.map((item, index) => (
+              <button
+                key={item.id}
+                type="button"
+                aria-label={`查看第 ${index + 1} 条素材`}
+                onClick={() => setActiveIndex(index)}
+                className={`h-2.5 rounded-full transition-all ${index === activeIndex ? 'w-8 bg-cyan-500' : 'w-2.5 bg-cyan-100 hover:bg-cyan-200'}`}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-[1.35rem] border border-cyan-100 bg-slate-950/5">
         {active.media_type === 'video' ? (
           <video
             key={active.id}
@@ -67,17 +86,7 @@ export function SiteLoopMedia() {
             className="h-48 w-full object-cover"
           />
         )}
-      </div>
-      <div className="mt-3 flex gap-2">
-        {items.map((item, index) => (
-          <button
-            key={item.id}
-            type="button"
-            aria-label={`查看第 ${index + 1} 条素材`}
-            onClick={() => setActiveIndex(index)}
-            className={`h-2 flex-1 rounded-full transition ${index === activeIndex ? 'bg-cyan-500' : 'bg-cyan-100'}`}
-          />
-        ))}
+        </div>
       </div>
     </div>
   );

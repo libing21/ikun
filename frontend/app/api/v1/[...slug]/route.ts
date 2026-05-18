@@ -255,16 +255,14 @@ async function createComment(req: Request, idRaw: string) {
   const parentID = body.parent_id ? Number(body.parent_id) : null;
   if (!content) return invalid('content required');
 
-  const moderation = checkText(content);
-  const status = moderation.allowed ? 'pending_review' : 'rejected';
   const comment = await withTransaction(async (client) => {
     const inserted = await client.query(
       `insert into comments (post_id, author_id, parent_id, content, status, like_count, created_at, updated_at)
        values ($1, $2, $3, $4, $5, 0, now(), now())
        returning *`,
-      [postID, claims.user_id, parentID, content, status],
+      [postID, claims.user_id, parentID, content, 'approved'],
     );
-    await createModerationJob(client, 'comment', inserted.rows[0].id, moderation.risk, moderation);
+    await client.query('update posts set comment_count = comment_count + 1, updated_at = now() where id = $1', [postID]);
     return inserted.rows[0];
   });
   return ok(formatComment(comment));
