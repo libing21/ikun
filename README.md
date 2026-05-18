@@ -15,11 +15,65 @@
 
 - 数据库：`Supabase Postgres`
 - 媒体存储：`Supabase Storage`
-- 后端：部署到 `Render`
-- 前端：部署 Next.js，配置 `NEXT_PUBLIC_API_BASE`
+- 前端与 Vercel API：部署到 `Vercel`
+- 旧 Go 后端：继续保留在 `backend/`，以后有服务器时可恢复
 
 当前后端已经原生支持 PostgreSQL，所以不依赖本地 MySQL。你只需要把 `DATABASE_DSN` 换成 Supabase 提供的 PostgreSQL 连接串即可。
 当前版本也没有硬依赖 Redis，所以部署到 `reader` 时不需要额外准备本地缓存实例。
+
+## Vercel API 迁移说明
+
+为避免删除现有 Go 后端，项目现在采用“双轨”结构：
+
+- `backend/`：保留原 Go/Gin 后端，不删除
+- `frontend/app/api/v1/[...slug]/route.ts`：新增 Vercel 可运行的 Next.js API 兼容层
+
+当前第一阶段已经迁移的接口：
+
+- `auth/register`
+- `auth/login`
+- `auth/me`
+- `posts`
+- `posts/:id`
+- `posts/:id/comments`
+- `posts/:id/like`
+- `posts/:id/favorite`
+- `reports`
+- `me/posts`
+- `me/favorites`
+- `me/reports`
+- `admin/moderation/jobs`
+- `admin/reports`
+
+暂未迁移完成：
+
+- `ai/hotspots/generate`
+- Go 后端里的完整热点抓取链路
+
+在 Vercel 模式下，前端默认优先走同域 `/api/v1`，因此可以不单独部署 Go 服务。
+
+### Vercel 项目环境变量
+
+把这些环境变量加到 `frontend` 对应的 Vercel Project：
+
+```bash
+DATABASE_DSN=你的 Supabase Postgres 连接串
+JWT_SECRET=换成一个长随机串
+JWT_TTL_HOURS=24
+ARK_API_KEY=你的方舟 key
+ARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+ARK_MODEL=你的方舟 endpoint id
+SUPABASE_PROJECT_URL=https://你的 project-ref.supabase.co
+SUPABASE_ANON_KEY=你的 anon key
+SUPABASE_SERVICE_ROLE_KEY=你的 service role key
+SUPABASE_STORAGE_BUCKET=community-media
+HOTSPOT_ENABLED=false
+```
+
+说明：
+
+- `NEXT_PUBLIC_API_BASE` 可以先不填，默认走同域 `/api/v1`
+- 本地开发时如果 `frontend` 项目没有配置 `DATABASE_DSN`，Next API 会回退读取 `../backend/.env`
 
 ## 本地快速启动
 

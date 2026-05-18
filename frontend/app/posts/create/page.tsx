@@ -8,15 +8,9 @@ export default function CreatePostPage() {
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formElement = e.currentTarget;
-    // #region debug-point A:create-post-submit
-    fetch('http://127.0.0.1:7777/event', { method: 'POST', body: JSON.stringify({ sessionId: 'auth-hotspot-bugs', runId: 'pre-fix', hypothesisId: 'A', location: 'frontend/app/posts/create/page.tsx:submit:start', msg: '[DEBUG] create post submit start', data: { hasCurrentTarget: !!e.currentTarget }, ts: Date.now() }) }).catch(() => {});
-    // #endregion
     const form = new FormData(formElement);
     try {
       const post = await api<Post>('/posts', { method: 'POST', body: JSON.stringify({ title: form.get('title'), content: form.get('content'), post_type: form.get('post_type') }) });
-      // #region debug-point A:create-post-response
-      fetch('http://127.0.0.1:7777/event', { method: 'POST', body: JSON.stringify({ sessionId: 'auth-hotspot-bugs', runId: 'pre-fix', hypothesisId: 'A', location: 'frontend/app/posts/create/page.tsx:submit:after-api', msg: '[DEBUG] create post api success', data: { postId: post.id, hasCurrentTarget: !!e.currentTarget }, ts: Date.now() }) }).catch(() => {});
-      // #endregion
       setMessage(`已提交审核，帖子 ID：${post.id}`);
       formElement.reset();
     } catch (err) { setMessage(err instanceof Error ? err.message : '提交失败'); }

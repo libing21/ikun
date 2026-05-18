@@ -1,4 +1,11 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080/api/v1';
+export function getApiBase() {
+  if (process.env.NEXT_PUBLIC_API_BASE) return process.env.NEXT_PUBLIC_API_BASE;
+  if (typeof window !== 'undefined') return '/api/v1';
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}/api/v1`;
+  return 'http://localhost:3000/api/v1';
+}
+
+const API_BASE = getApiBase();
 
 export type ApiResponse<T> = { code: number; message: string; data: T };
 

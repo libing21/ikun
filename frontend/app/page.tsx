@@ -1,9 +1,13 @@
+import { headers } from 'next/headers';
 import { PostCard } from '@/components/PostCard';
 import { SitePoster } from '@/components/SitePoster';
-import type { Post } from '@/lib/client';
+import { getApiBase, type Post } from '@/lib/client';
 
 async function getPosts() {
-  const base = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080/api/v1';
+  const requestHeaders = headers();
+  const host = requestHeaders.get('x-forwarded-host') || requestHeaders.get('host');
+  const protocol = requestHeaders.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https');
+  const base = process.env.NEXT_PUBLIC_API_BASE || (host ? `${protocol}://${host}/api/v1` : getApiBase());
   try {
     const res = await fetch(`${base}/posts`, { cache: 'no-store' });
     const body = await res.json();
