@@ -8,6 +8,7 @@ import {
   formatPost,
   formatUser,
   getPool,
+  getRuntimeDebugSnapshot,
   hashPassword,
   internal,
   invalid,
@@ -43,6 +44,7 @@ export async function DELETE(req: Request, ctx: Context) {
 
 async function handle(method: string, req: Request, slug: string[]) {
   try {
+    if (slug[0] === 'debug' && slug[1] === 'runtime-env' && method === 'GET') return ok(getRuntimeDebugSnapshot());
     if (slug[0] === 'auth' && slug[1] === 'register' && method === 'POST') return register(req);
     if (slug[0] === 'auth' && slug[1] === 'login' && method === 'POST') return login(req);
     if (slug[0] === 'auth' && slug[1] === 'refresh' && method === 'POST') return ok({ message: 'refresh token flow can be extended later' });

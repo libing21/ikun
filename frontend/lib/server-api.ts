@@ -57,6 +57,48 @@ export function env(key: string, fallback = '') {
   return fallback;
 }
 
+function envSource(key: string) {
+  if (process.env[key]?.trim()) return 'process.env';
+  if (shouldUseBackendEnvFallback() && readBackendEnv()[key]) return 'backend/.env';
+  return 'fallback';
+}
+
+function safeConnectionInfo(connectionString: string) {
+  try {
+    const url = new URL(connectionString);
+    return {
+      protocol: url.protocol.replace(':', ''),
+      host: url.hostname,
+      port: url.port || '(default)',
+      database: url.pathname.replace(/^\//, '') || '(default)',
+      username: url.username,
+      search: url.search || '',
+    };
+  } catch {
+    return {
+      protocol: 'unknown',
+      host: '(parse-failed)',
+      port: '(parse-failed)',
+      database: '(parse-failed)',
+      username: '(parse-failed)',
+      search: '',
+    };
+  }
+}
+
+export function getRuntimeDebugSnapshot() {
+  const connectionString = env('DATABASE_DSN');
+  return {
+    database_dsn_source: envSource('DATABASE_DSN'),
+    has_database_dsn: Boolean(connectionString),
+    connection: connectionString ? safeConnectionInfo(connectionString) : null,
+    node_env: process.env.NODE_ENV || '',
+    vercel_env: process.env.VERCEL_ENV || '',
+    has_vercel_flag: Boolean(process.env.VERCEL),
+    vercel_url: process.env.VERCEL_URL || '',
+  };
+}
+
 export function getPool() {
   if (!globalState.__ikunPgPool) {
     const connectionString = env('DATABASE_DSN');
