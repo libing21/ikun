@@ -33,7 +33,7 @@ export function SiteLoopMedia() {
           <h2 className="text-lg font-black text-slate-950">宗门放映位</h2>
           <span className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-bold text-cyan-700">管理员可配</span>
         </div>
-        <p className="mt-2 text-sm leading-6 text-slate-600">{message || '还没有启用的轮播素材，管理员可在后台添加图片或视频链接。'}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">{message || '还没有启用的轮播素材，管理员可在“审核后台 -> 宗门放映位”里添加图片或视频链接。'}</p>
       </div>
     );
   }

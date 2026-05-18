@@ -17,10 +17,12 @@ export function PostCard({ post }: { post: Post }) {
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusMeta.className}`}>{statusMeta.label}</span>
       </div>
       <p className="line-clamp-3 text-sm text-slate-600">{post.content || '暂无正文'}</p>
-      <div className="flex gap-4 text-xs text-slate-500">
+      <div className="flex flex-wrap gap-4 text-xs text-slate-500">
         <span>作者：{post.author?.username || '匿名创作者'}</span>
         <span>点赞 {post.like_count}</span>
         <span>收藏 {post.favorite_count}</span>
+        <span>评论 {post.comment_count}</span>
+        <Link href={`/posts/${post.id}`} className="font-semibold text-fuchsia-600">去评论</Link>
       </div>
     </article>
   );

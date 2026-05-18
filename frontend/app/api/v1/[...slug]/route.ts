@@ -69,6 +69,7 @@ async function handle(method: string, req: Request, slug: string[]) {
 
     if (slug[0] === 'reports' && slug.length === 1 && method === 'POST') return createReport(req);
     if (slug[0] === 'site' && slug[1] === 'loop-media' && slug.length === 2 && method === 'GET') return listSiteLoopMedia();
+    if (slug[0] === 'rankings' && slug[1] === 'glory' && slug.length === 2 && method === 'GET') return listGloryRankings();
 
     if (slug[0] === 'admin' && slug[1] === 'moderation' && slug[2] === 'jobs' && slug.length === 3 && method === 'GET') return moderationJobs(req);
     if (slug[0] === 'admin' && slug[1] === 'moderation' && slug[2] === 'jobs' && slug[4] === 'review' && method === 'POST') return reviewModerationJob(req, slug[3]);
@@ -384,6 +385,26 @@ async function listSiteLoopMedia() {
       order by sort_order asc, created_at desc`,
   );
   return ok(result.rows.map(formatSiteLoopMedia));
+}
+
+async function listGloryRankings() {
+  const result = await getPool().query(
+    `select
+        u.id as user_id,
+        u.username,
+        count(p.id)::int as post_count,
+        coalesce(sum(p.like_count), 0)::int as like_count,
+        coalesce(sum(p.comment_count), 0)::int as comment_count,
+        (count(p.id) * 5 + coalesce(sum(p.like_count), 0) * 2 + coalesce(sum(p.comment_count), 0))::int as score
+      from users u
+      join posts p on p.author_id = u.id
+     where p.status = 'published'
+       and p.created_at >= now() - interval '1 day'
+     group by u.id, u.username
+     order by post_count desc, like_count desc, comment_count desc, score desc, u.id asc
+     limit 10`,
+  );
+  return ok(result.rows);
 }
 
 async function adminSiteLoopMedia(req: Request) {

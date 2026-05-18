@@ -77,4 +77,12 @@ export type SiteLoopMediaItem = {
   created_at: string;
   updated_at: string;
 };
+export type GloryRankUser = {
+  user_id: number;
+  username: string;
+  post_count: number;
+  like_count: number;
+  comment_count: number;
+  score: number;
+};
 export type Report = { id: number; target_type: string; target_id: number; reason_code: string; reason_text: string; status: string; created_at: string };

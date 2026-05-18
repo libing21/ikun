@@ -33,9 +33,10 @@ export function SiteNav() {
   return (
     <div className="flex items-center gap-4 text-sm">
       <Link href="/posts/create">发帖</Link>
-      <Link href="/ai">热点雷达</Link>
+      <Link href="/posts/create">评论互动</Link>
       <Link href="/me">我的</Link>
       {canModerate ? <Link href="/admin/moderation">审核后台</Link> : null}
+      {canModerate ? <Link href="/admin/site-media">放映位</Link> : null}
       {!ready ? (
         <span className="text-slate-400">加载中...</span>
       ) : me ? (
