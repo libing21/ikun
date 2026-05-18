@@ -45,6 +45,7 @@ export async function DELETE(req: Request, ctx: Context) {
 async function handle(method: string, req: Request, slug: string[]) {
   try {
     if (slug[0] === 'debug' && slug[1] === 'runtime-env' && method === 'GET') return ok(getRuntimeDebugSnapshot());
+    if (slug[0] === 'debug' && slug[1] === 'db-ping' && method === 'GET') return debugDBPing();
     if (slug[0] === 'auth' && slug[1] === 'register' && method === 'POST') return register(req);
     if (slug[0] === 'auth' && slug[1] === 'login' && method === 'POST') return login(req);
     if (slug[0] === 'auth' && slug[1] === 'refresh' && method === 'POST') return ok({ message: 'refresh token flow can be extended later' });
@@ -88,6 +89,11 @@ function parseID(value?: string) {
   const id = Number(value);
   if (!Number.isFinite(id) || id <= 0) throw invalid('invalid id');
   return id;
+}
+
+async function debugDBPing() {
+  const result = await getPool().query('select 1 as ok');
+  return ok({ connected: result.rows[0]?.ok === 1 });
 }
 
 async function register(req: Request) {
