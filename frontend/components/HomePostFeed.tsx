@@ -73,7 +73,7 @@ export function HomePostFeed() {
   }
 
   return (
-    <div className="space-y-4">
+    <div id="feed" className="space-y-4">
       {message ? <div className="card border-fuchsia-100 bg-fuchsia-50 text-sm text-fuchsia-700">{message}</div> : null}
       {posts.map((post) => (
         <PostCard key={post.id} post={post} />

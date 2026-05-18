@@ -30,10 +30,10 @@ export function SiteLoopMedia() {
     return (
       <div className="card border-cyan-100 bg-gradient-to-br from-white/95 to-cyan-50">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-black text-slate-950">宗门放映位</h2>
+          <h2 className="text-lg font-black text-slate-950">宗主放映位</h2>
           <span className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-bold text-cyan-700">管理员可配</span>
         </div>
-        <p className="mt-2 text-sm leading-6 text-slate-600">{message || '还没有启用的轮播素材，管理员可在“审核后台 -> 宗门放映位”里添加图片或视频链接。'}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">{message || '还没有启用的轮播素材，管理员可在顶部“宗主放映位”入口里添加图片或视频链接。'}</p>
       </div>
     );
   }
@@ -41,7 +41,7 @@ export function SiteLoopMedia() {
   return (
     <div className="card border-cyan-100 bg-gradient-to-br from-white/95 to-cyan-50">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-black text-slate-950">宗门放映位</h2>
+        <h2 className="text-lg font-black text-slate-950">宗主放映位</h2>
         <span className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-bold text-cyan-700">
           {items.length > 1 ? `${activeIndex + 1}/${items.length}` : '单条展示'}
         </span>

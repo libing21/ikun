@@ -80,7 +80,7 @@ export default function AdminSiteMediaPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">宗门放映位管理</h1>
+          <h1 className="text-2xl font-bold">宗主放映位管理</h1>
           <p className="mt-1 text-sm text-slate-500">管理员可添加图片/视频 URL，控制首页右侧小轮播的顺序和启用状态。</p>
         </div>
         <a href="/admin/moderation" className="text-sm font-semibold text-fuchsia-600">返回审核后台</a>

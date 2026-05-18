@@ -16,11 +16,15 @@ export function getToken() {
 
 export function setToken(token: string) {
   localStorage.setItem('token', token);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('auth-changed'));
+  }
 }
 
 export function clearToken() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('token');
+    window.dispatchEvent(new Event('auth-changed'));
   }
 }
 
