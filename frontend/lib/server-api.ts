@@ -44,15 +44,24 @@ function readBackendEnv(): BackendEnvCache {
   return cache;
 }
 
+function shouldUseBackendEnvFallback() {
+  return !process.env.VERCEL && process.env.NODE_ENV !== 'production';
+}
+
 export function env(key: string, fallback = '') {
-  return process.env[key] || readBackendEnv()[key] || fallback;
+  const runtimeValue = process.env[key]?.trim();
+  if (runtimeValue) return runtimeValue;
+  if (shouldUseBackendEnvFallback()) {
+    return readBackendEnv()[key] || fallback;
+  }
+  return fallback;
 }
 
 export function getPool() {
   if (!globalState.__ikunPgPool) {
     const connectionString = env('DATABASE_DSN');
     if (!connectionString) {
-      throw new Error('DATABASE_DSN is required for Next API mode');
+      throw new Error('DATABASE_DSN is required for Next API mode; set it in the deployment environment');
     }
     globalState.__ikunPgPool = new Pool({
       connectionString,
