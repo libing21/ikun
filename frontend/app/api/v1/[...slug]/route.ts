@@ -3,7 +3,6 @@ import {
   checkText,
   comparePassword,
   createModerationJob,
-  fail,
   formatComment,
   formatPost,
   formatUser,
@@ -92,8 +91,27 @@ function parseID(value?: string) {
 }
 
 async function debugDBPing() {
-  const result = await getPool().query('select 1 as ok');
-  return ok({ connected: result.rows[0]?.ok === 1 });
+  try {
+    const result = await getPool().query('select 1 as ok');
+    return ok({ connected: result.rows[0]?.ok === 1 });
+  } catch (error) {
+    const err = error as { name?: string; message?: string; code?: string; errno?: number; syscall?: string; hostname?: string };
+    return Response.json(
+      {
+        code: 50002,
+        message: 'db ping failed',
+        data: {
+          name: err?.name || '',
+          message: err?.message || 'unknown error',
+          code: err?.code || '',
+          errno: err?.errno || 0,
+          syscall: err?.syscall || '',
+          hostname: err?.hostname || '',
+        },
+      },
+      { status: 500 },
+    );
+  }
 }
 
 async function register(req: Request) {
