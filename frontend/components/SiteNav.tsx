@@ -7,6 +7,7 @@ import { api, clearToken, getToken, User } from '@/lib/client';
 export function SiteNav() {
   const [me, setMe] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
+  const canModerate = me?.role === 'moderator' || me?.role === 'admin';
 
   useEffect(() => {
     const token = getToken();
@@ -34,7 +35,7 @@ export function SiteNav() {
       <Link href="/posts/create">发帖</Link>
       <Link href="/ai">热点雷达</Link>
       <Link href="/me">我的</Link>
-      <Link href="/admin/moderation">审核后台</Link>
+      {canModerate ? <Link href="/admin/moderation">审核后台</Link> : null}
       {!ready ? (
         <span className="text-slate-400">加载中...</span>
       ) : me ? (

@@ -65,4 +65,16 @@ export type ModerationJob = {
   target_status?: string;
   target_author_username?: string;
 };
+export type SiteLoopMediaItem = {
+  id: number;
+  title: string;
+  media_type: string;
+  media_url: string;
+  poster_url: string;
+  sort_order: number;
+  is_active: boolean;
+  created_by: number | null;
+  created_at: string;
+  updated_at: string;
+};
 export type Report = { id: number; target_type: string; target_id: number; reason_code: string; reason_text: string; status: string; created_at: string };

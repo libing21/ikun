@@ -303,6 +303,52 @@ export function formatUser(row: any) {
   };
 }
 
+let ensureSiteLoopMediaTablePromise: Promise<void> | null = null;
+
+export async function ensureSiteLoopMediaTable() {
+  if (!ensureSiteLoopMediaTablePromise) {
+    ensureSiteLoopMediaTablePromise = (async () => {
+      await getPool().query(`
+        create table if not exists site_loop_media (
+          id bigserial primary key,
+          title varchar(120) not null,
+          media_type varchar(20) not null,
+          media_url text not null,
+          poster_url text default '',
+          sort_order int not null default 0,
+          is_active boolean not null default true,
+          created_by bigint references users(id),
+          created_at timestamptz not null default now(),
+          updated_at timestamptz not null default now()
+        )
+      `);
+      await getPool().query(`
+        create index if not exists idx_site_loop_media_active_order
+        on site_loop_media(is_active, sort_order, created_at desc)
+      `);
+    })().catch((error) => {
+      ensureSiteLoopMediaTablePromise = null;
+      throw error;
+    });
+  }
+  await ensureSiteLoopMediaTablePromise;
+}
+
+export function formatSiteLoopMedia(row: any) {
+  return {
+    id: Number(row.id),
+    title: row.title,
+    media_type: row.media_type,
+    media_url: row.media_url,
+    poster_url: row.poster_url || '',
+    sort_order: Number(row.sort_order || 0),
+    is_active: Boolean(row.is_active),
+    created_by: row.created_by ? Number(row.created_by) : null,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
 export async function readJSON(req: Request) {
   try {
     return await req.json();

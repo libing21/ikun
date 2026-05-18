@@ -3,8 +3,10 @@ import {
   checkText,
   comparePassword,
   createModerationJob,
+  ensureSiteLoopMediaTable,
   formatComment,
   formatPost,
+  formatSiteLoopMedia,
   formatUser,
   getPool,
   getRuntimeDebugSnapshot,
@@ -66,11 +68,16 @@ async function handle(method: string, req: Request, slug: string[]) {
     if (slug[0] === 'me' && slug[1] === 'reports' && method === 'GET') return myReports(req);
 
     if (slug[0] === 'reports' && slug.length === 1 && method === 'POST') return createReport(req);
+    if (slug[0] === 'site' && slug[1] === 'loop-media' && slug.length === 2 && method === 'GET') return listSiteLoopMedia();
 
     if (slug[0] === 'admin' && slug[1] === 'moderation' && slug[2] === 'jobs' && slug.length === 3 && method === 'GET') return moderationJobs(req);
     if (slug[0] === 'admin' && slug[1] === 'moderation' && slug[2] === 'jobs' && slug[4] === 'review' && method === 'POST') return reviewModerationJob(req, slug[3]);
     if (slug[0] === 'admin' && slug[1] === 'reports' && slug.length === 2 && method === 'GET') return adminReports(req);
     if (slug[0] === 'admin' && slug[1] === 'reports' && slug[3] === 'resolve' && method === 'POST') return resolveReport(req, slug[2]);
+    if (slug[0] === 'admin' && slug[1] === 'site' && slug[2] === 'loop-media' && slug.length === 3 && method === 'GET') return adminSiteLoopMedia(req);
+    if (slug[0] === 'admin' && slug[1] === 'site' && slug[2] === 'loop-media' && slug.length === 3 && method === 'POST') return createSiteLoopMedia(req);
+    if (slug[0] === 'admin' && slug[1] === 'site' && slug[2] === 'loop-media' && slug.length === 4 && method === 'PATCH') return updateSiteLoopMedia(req, slug[3]);
+    if (slug[0] === 'admin' && slug[1] === 'site' && slug[2] === 'loop-media' && slug.length === 4 && method === 'DELETE') return deleteSiteLoopMedia(req, slug[3]);
 
     if (slug[0] === 'ai' && slug[1] === 'hotspots' && slug[2] === 'generate' && method === 'POST') {
       return invalid('热点抓取第二阶段再迁移，当前先保留 Go 后端版本');
@@ -366,6 +373,98 @@ async function createReport(req: Request) {
     [claims.user_id, targetType, targetID, reasonCode, reasonText],
   );
   return ok(inserted.rows[0]);
+}
+
+async function listSiteLoopMedia() {
+  await ensureSiteLoopMediaTable();
+  const result = await getPool().query(
+    `select *
+       from site_loop_media
+      where is_active = true
+      order by sort_order asc, created_at desc`,
+  );
+  return ok(result.rows.map(formatSiteLoopMedia));
+}
+
+async function adminSiteLoopMedia(req: Request) {
+  const claims = await requireAuth(req);
+  requireRole(claims.role, ['moderator', 'admin']);
+  await ensureSiteLoopMediaTable();
+  const result = await getPool().query(
+    `select *
+       from site_loop_media
+      order by sort_order asc, created_at desc`,
+  );
+  return ok(result.rows.map(formatSiteLoopMedia));
+}
+
+async function createSiteLoopMedia(req: Request) {
+  const claims = await requireAuth(req);
+  requireRole(claims.role, ['moderator', 'admin']);
+  await ensureSiteLoopMediaTable();
+
+  const body = await readJSON(req);
+  const title = String(body.title || '').trim();
+  const mediaType = String(body.media_type || '').trim();
+  const mediaURL = String(body.media_url || '').trim();
+  const posterURL = String(body.poster_url || '').trim();
+  const sortOrder = Number(body.sort_order || 0) || 0;
+  const isActive = body.is_active !== false;
+  if (!title || !['image', 'video'].includes(mediaType) || !mediaURL) {
+    return invalid('title, media_type(image|video) and media_url required');
+  }
+
+  const inserted = await getPool().query(
+    `insert into site_loop_media (title, media_type, media_url, poster_url, sort_order, is_active, created_by, created_at, updated_at)
+     values ($1, $2, $3, $4, $5, $6, $7, now(), now())
+     returning *`,
+    [title, mediaType, mediaURL, posterURL, sortOrder, isActive, claims.user_id],
+  );
+  return ok(formatSiteLoopMedia(inserted.rows[0]));
+}
+
+async function updateSiteLoopMedia(req: Request, idRaw: string) {
+  const claims = await requireAuth(req);
+  requireRole(claims.role, ['moderator', 'admin']);
+  await ensureSiteLoopMediaTable();
+
+  const id = parseID(idRaw);
+  const body = await readJSON(req);
+  const title = String(body.title || '').trim();
+  const mediaType = String(body.media_type || '').trim();
+  const mediaURL = String(body.media_url || '').trim();
+  const posterURL = String(body.poster_url || '').trim();
+  const sortOrder = Number(body.sort_order || 0) || 0;
+  const isActive = body.is_active !== false;
+  if (!title || !['image', 'video'].includes(mediaType) || !mediaURL) {
+    return invalid('title, media_type(image|video) and media_url required');
+  }
+
+  const updated = await getPool().query(
+    `update site_loop_media
+        set title = $2,
+            media_type = $3,
+            media_url = $4,
+            poster_url = $5,
+            sort_order = $6,
+            is_active = $7,
+            updated_at = now()
+      where id = $1
+      returning *`,
+    [id, title, mediaType, mediaURL, posterURL, sortOrder, isActive],
+  );
+  if (!updated.rowCount) return notFound('site loop media not found');
+  return ok(formatSiteLoopMedia(updated.rows[0]));
+}
+
+async function deleteSiteLoopMedia(req: Request, idRaw: string) {
+  const claims = await requireAuth(req);
+  requireRole(claims.role, ['moderator', 'admin']);
+  await ensureSiteLoopMediaTable();
+
+  const id = parseID(idRaw);
+  await getPool().query('delete from site_loop_media where id = $1', [id]);
+  return ok({ deleted: true });
 }
 
 async function moderationJobs(req: Request) {

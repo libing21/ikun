@@ -35,7 +35,13 @@ export default function AdminModerationPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">审核后台</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">审核后台</h1>
+        <div className="flex gap-3 text-sm font-semibold">
+          <a href="/admin/site-media" className="text-cyan-700">宗门放映位</a>
+          <a href="/admin/reports" className="text-fuchsia-700">举报处理</a>
+        </div>
+      </div>
       {msg ? <p className="text-sm text-fuchsia-600">{msg}</p> : null}
       {jobs.map((job) => {
         const taskStatus = JOB_STATUS_LABEL[job.status] || job.status;
