@@ -1,0 +1,60 @@
+services:
+  - type: web
+    name: ikunzong-api
+    runtime: go
+    rootDir: backend
+    plan: free
+    buildCommand: go build -o server ./cmd/server
+    startCommand: ./server
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DB_DRIVER
+        value: postgres
+      - key: CORS_ORIGINS
+        value: https://www.ikunzong.com
+      - key: HOTSPOT_ENABLED
+        value: false
+      - key: HOTSPOT_RUN_ON_START
+        value: false
+      - key: JWT_TTL_HOURS
+        value: "24"
+      - key: SUPABASE_STORAGE_BUCKET
+        value: community-media
+      - key: DATABASE_DSN
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ARK_API_KEY
+        sync: false
+      - key: ARK_BASE_URL
+        value: https://ark.cn-beijing.volces.com/api/v3
+      - key: ARK_MODEL
+        sync: false
+      - key: SUPABASE_PROJECT_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: WEBSEARCH_DEFAULT_ENDPOINT
+        value: https://open.feedcoopapi.com/search_api/web_search
+      - key: WEBSEARCH_ENDPOINTS
+        value: https://open.feedcoopapi.com/search_api/web_search
+      - key: WEBSEARCH_API_KEY
+        sync: false
+      - key: WEBSEARCH_INSECURE_SKIP_VERIFY
+        value: "false"
+
+  - type: web
+    name: ikunzong-web
+    runtime: node
+    rootDir: frontend
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_BASE
+        value: https://api.ikunzong.com/api/v1

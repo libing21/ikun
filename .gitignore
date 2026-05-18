@@ -1,0 +1,80 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# IDE specific files
+.idea/
+.vscode/
+.cloudide
+.trae/
+.tmp/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build output
+bin/
+dist/
+/server
+node_modules/
+.next/
+
+# Log files
+*.log
+log
+
+# Environment variables
+.env
+.env.local
+*.local
+/tmp/
+log/
+output/
+/.local-data/
+**/.local-data/
+.cursorrules
+cover*.out
+src/conf/kitex_remote_config.json
+.venv
+.env*
+
+
+# workspace 开发
+workspaces/
+go.work.sum
+go.work
+cmd/botlink/converter.py
+*.csv
+
+
+docs/
+.vscode/
+**/__debug_bin*
+
+# Local notes
+agent.md
+openspec
+debug.test*
