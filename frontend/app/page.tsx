@@ -1,24 +1,7 @@
-import { headers } from 'next/headers';
-import { PostCard } from '@/components/PostCard';
+import { HomePostFeed } from '@/components/HomePostFeed';
 import { SitePoster } from '@/components/SitePoster';
-import { getApiBase, type Post } from '@/lib/client';
 
-async function getPosts() {
-  const requestHeaders = headers();
-  const host = requestHeaders.get('x-forwarded-host') || requestHeaders.get('host');
-  const protocol = requestHeaders.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https');
-  const base = process.env.NEXT_PUBLIC_API_BASE || (host ? `${protocol}://${host}/api/v1` : getApiBase());
-  try {
-    const res = await fetch(`${base}/posts`, { cache: 'no-store' });
-    const body = await res.json();
-    return (body.data || []) as Post[];
-  } catch {
-    return [] as Post[];
-  }
-}
-
-export default async function HomePage() {
-  const posts = await getPosts();
+export default function HomePage() {
   const hotTopics = [
     '今日公开平台热议：舞台名场面二创合集',
     '新鲜梗图征集：ikun 宗门今日快乐源泉',
@@ -40,7 +23,7 @@ export default async function HomePage() {
             <span className="rounded-full bg-white/25 px-4 py-2 backdrop-blur">AI 聚合待审核</span>
           </div>
         </div>
-        {posts.length === 0 ? <div className="card text-slate-300">暂无已发布帖子，去发一篇等待审核吧。</div> : posts.map((post) => <PostCard key={post.id} post={post} />)}
+        <HomePostFeed />
       </section>
       <aside className="space-y-4">
         <SitePoster />

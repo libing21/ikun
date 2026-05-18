@@ -374,10 +374,32 @@ async function moderationJobs(req: Request) {
   const url = new URL(req.url);
   const status = url.searchParams.get('status');
   const result = await getPool().query(
-    status ? 'select * from moderation_jobs where status = $1 order by created_at desc' : 'select * from moderation_jobs order by created_at desc',
+    `select mj.*,
+            p.title as post_title,
+            p.content as post_content,
+            p.status as post_status,
+            pu.username as post_author_username,
+            c.content as comment_content,
+            c.status as comment_status,
+            cu.username as comment_author_username
+       from moderation_jobs mj
+       left join posts p on mj.target_type = 'post' and p.id = mj.target_id
+       left join users pu on pu.id = p.author_id
+       left join comments c on mj.target_type = 'comment' and c.id = mj.target_id
+       left join users cu on cu.id = c.author_id
+      ${status ? 'where mj.status = $1' : ''}
+      order by mj.created_at desc`,
     status ? [status] : [],
   );
-  return ok(result.rows);
+  return ok(
+    result.rows.map((row) => ({
+      ...row,
+      target_title: row.post_title || (row.target_type === 'comment' ? '评论审核' : ''),
+      target_content: row.post_content || row.comment_content || '',
+      target_status: row.post_status || row.comment_status || '',
+      target_author_username: row.post_author_username || row.comment_author_username || '',
+    })),
+  );
 }
 
 async function reviewModerationJob(req: Request, idRaw: string) {

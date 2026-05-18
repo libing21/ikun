@@ -52,5 +52,17 @@ export type Post = { id: number; title: string; content: string; post_type: stri
 export type Comment = { id: number; content: string; status: string; author?: User; created_at: string };
 export type Conversation = { id: number; title: string; persona_code: string; created_at: string };
 export type AIMessage = { id: number; role: string; content: string; safety_label: string; created_at: string };
-export type ModerationJob = { id: number; target_type: string; target_id: number; status: string; risk_level: string; result_json: string; created_at: string };
+export type ModerationJob = {
+  id: number;
+  target_type: string;
+  target_id: number;
+  status: string;
+  risk_level: string;
+  result_json: string;
+  created_at: string;
+  target_title?: string;
+  target_content?: string;
+  target_status?: string;
+  target_author_username?: string;
+};
 export type Report = { id: number; target_type: string; target_id: number; reason_code: string; reason_text: string; status: string; created_at: string };
