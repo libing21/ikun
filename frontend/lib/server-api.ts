@@ -86,6 +86,32 @@ function safeConnectionInfo(connectionString: string) {
   }
 }
 
+function buildPoolConfig(connectionString: string) {
+  let normalizedConnectionString = connectionString;
+  let ssl: boolean | { rejectUnauthorized: boolean } | undefined;
+
+  try {
+    const url = new URL(connectionString);
+    const sslmode = url.searchParams.get('sslmode')?.toLowerCase();
+    if (sslmode === 'require') {
+      // `pg` may let connection string SSL settings override the explicit SSL object.
+      // Strip `sslmode` and provide the TLS option directly so Vercel can connect.
+      url.searchParams.delete('sslmode');
+      normalizedConnectionString = url.toString();
+      ssl = { rejectUnauthorized: false };
+    }
+  } catch {
+    if (connectionString.includes('sslmode=require')) {
+      ssl = { rejectUnauthorized: false };
+    }
+  }
+
+  return {
+    connectionString: normalizedConnectionString,
+    ssl,
+  };
+}
+
 export function getRuntimeDebugSnapshot() {
   const connectionString = env('DATABASE_DSN');
   return {
@@ -105,9 +131,10 @@ export function getPool() {
     if (!connectionString) {
       throw new Error('DATABASE_DSN is required for Next API mode; set it in the deployment environment');
     }
+    const poolConfig = buildPoolConfig(connectionString);
     globalState.__ikunPgPool = new Pool({
-      connectionString,
-      ssl: connectionString.includes('sslmode=require') ? { rejectUnauthorized: false } : undefined,
+      connectionString: poolConfig.connectionString,
+      ssl: poolConfig.ssl,
     });
   }
   return globalState.__ikunPgPool;
