@@ -30,7 +30,16 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   const token = getToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers, cache: 'no-store' });
-  const body = (await res.json()) as ApiResponse<T>;
+  const raw = await res.text();
+  let body: ApiResponse<T> | null = null;
+  try {
+    body = raw ? (JSON.parse(raw) as ApiResponse<T>) : null;
+  } catch {
+    throw new Error(`Non-JSON response: ${res.status} ${res.statusText}; body=${raw.slice(0, 200) || '<empty>'}`);
+  }
+  if (!body) {
+    throw new Error(`Empty response: ${res.status} ${res.statusText}`);
+  }
   if (!res.ok || body.code !== 0) {
     if (res.status === 401 || body.code === 40101) clearToken();
     throw new Error(body.message || 'request failed');
