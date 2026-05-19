@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { PostCard } from '@/components/PostCard';
 import { api, Post } from '@/lib/client';
@@ -12,7 +11,6 @@ function sortByCreatedAtDesc(posts: Post[]) {
 export function HomePostFeed() {
   const [publishedPosts, setPublishedPosts] = useState<Post[]>([]);
   const [myPosts, setMyPosts] = useState<Post[]>([]);
-  const [activeBoard, setActiveBoard] = useState('all');
   const [message, setMessage] = useState('');
   const [ready, setReady] = useState(false);
 
@@ -62,22 +60,6 @@ export function HomePostFeed() {
     return sortByCreatedAtDesc(Array.from(merged.values()));
   }, [myPosts, publishedPosts]);
 
-  const boardOptions = useMemo(() => {
-    const options = new Map<string, string>();
-    options.set('all', '全部板块');
-    for (const post of posts) {
-      if (post.board_slug && post.board_name) {
-        options.set(post.board_slug, post.board_name);
-      }
-    }
-    return Array.from(options.entries()).map(([slug, name]) => ({ slug, name }));
-  }, [posts]);
-
-  const filteredPosts = useMemo(() => {
-    if (activeBoard === 'all') return posts;
-    return posts.filter((post) => post.board_slug === activeBoard);
-  }, [activeBoard, posts]);
-
   if (!ready && posts.length === 0) {
     return <div className="card text-slate-500">帖子加载中...</div>;
   }
@@ -93,23 +75,8 @@ export function HomePostFeed() {
   return (
     <div id="feed" className="space-y-4">
       {message ? <div className="card border-fuchsia-100 bg-fuchsia-50 text-sm text-fuchsia-700">{message}</div> : null}
-      <div className="card flex flex-wrap items-center gap-2">
-        <Link href="/boards" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
-          板块广场
-        </Link>
-        {boardOptions.map((board) => (
-          <button
-            key={board.slug}
-            type="button"
-            onClick={() => setActiveBoard(board.slug)}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${activeBoard === board.slug ? 'bg-gradient-to-r from-fuchsia-500 to-cyan-400 text-white shadow-lg shadow-fuchsia-100' : 'bg-white text-slate-600 shadow-sm hover:text-fuchsia-600'}`}
-          >
-            {board.name}
-          </button>
-        ))}
-      </div>
-      {filteredPosts.length === 0 ? <div className="card text-slate-500">这个板块暂时还没有帖子，去开一帖吧。</div> : null}
-      {filteredPosts.map((post) => (
+      {posts.length === 0 ? <div className="card text-slate-500">暂时还没有帖子，去开一帖吧。</div> : null}
+      {posts.map((post) => (
         <PostCard key={post.id} post={post} />
       ))}
     </div>

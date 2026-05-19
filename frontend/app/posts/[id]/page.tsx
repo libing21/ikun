@@ -260,7 +260,6 @@ export default function PostDetailPage({ params }: { params: { id: string } }) {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-slate-800">{replyTarget ? `回复 ${replyTarget.author?.username || '该评论'} · ${replyTarget.floor}F` : '发布新评论'}</p>
-              <p className="text-xs text-slate-500">{replyTarget ? '回复会自动挂到对应楼层下面。' : '发布后立即展示，不走审核。'}</p>
             </div>
             {replyTarget ? (
               <button type="button" onClick={() => setReplyTarget(null)} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">
@@ -272,14 +271,13 @@ export default function PostDetailPage({ params }: { params: { id: string } }) {
             name="content"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder={replyTarget ? `回复 ${replyTarget.author?.username || '这位信徒'}...` : '写下你的评论，发布后立即展示'}
+            placeholder={replyTarget ? `回复 ${replyTarget.author?.username || '这位信徒'}...` : '写下你的评论'}
             rows={4}
             className="w-full"
             required
           />
           <div className="flex items-center gap-3">
             <button>{replyTarget ? '发布回复' : '发表评论'}</button>
-            <span className="text-xs text-slate-400">支持楼层回复、评论点赞和头像展示。</span>
           </div>
         </form>
         {message && <p className="text-sm text-fuchsia-600">{message}</p>}

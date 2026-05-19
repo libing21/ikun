@@ -132,13 +132,22 @@ async function listPostTaxonomy() {
     });
   }
 
+  const boards = POST_BOARDS.map((board) => ({
+    ...board,
+    post_count: statsMap.get(board.slug)?.post_count || 0,
+    recent_post_count: statsMap.get(board.slug)?.recent_post_count || 0,
+    latest_post_at: statsMap.get(board.slug)?.latest_post_at || '',
+  })).sort((a, b) => {
+    if (b.recent_post_count !== a.recent_post_count) return (b.recent_post_count || 0) - (a.recent_post_count || 0);
+    if (b.post_count !== a.post_count) return (b.post_count || 0) - (a.post_count || 0);
+    const latestA = a.latest_post_at ? new Date(a.latest_post_at).getTime() : 0;
+    const latestB = b.latest_post_at ? new Date(b.latest_post_at).getTime() : 0;
+    if (latestB !== latestA) return latestB - latestA;
+    return 0;
+  });
+
   return ok({
-    boards: POST_BOARDS.map((board) => ({
-      ...board,
-      post_count: statsMap.get(board.slug)?.post_count || 0,
-      recent_post_count: statsMap.get(board.slug)?.recent_post_count || 0,
-      latest_post_at: statsMap.get(board.slug)?.latest_post_at || '',
-    })),
+    boards,
     tags: POST_TAGS,
   });
 }

@@ -1,3 +1,5 @@
+import Link from 'next/link';
+import { BoardPlazaGrid } from '@/components/BoardPlazaGrid';
 import { GloryRankBoard } from '@/components/GloryRankBoard';
 import { HomePostFeed } from '@/components/HomePostFeed';
 import { SiteLoopMedia } from '@/components/SiteLoopMedia';
@@ -26,6 +28,18 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+        <section className="space-y-3">
+          <div className="card flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-black text-slate-900">热板块</p>
+              <p className="mt-1 text-sm text-slate-500">按最近活跃度自动排序，热板块会排在前面。</p>
+            </div>
+            <Link href="/boards" className="text-sm font-semibold text-fuchsia-600">
+              查看完整板块广场
+            </Link>
+          </div>
+          <BoardPlazaGrid />
+        </section>
         <HomePostFeed />
       </section>
       <aside className="space-y-4">
