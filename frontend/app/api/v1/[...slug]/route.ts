@@ -3,6 +3,7 @@ import {
   checkText,
   comparePassword,
   createModerationJob,
+  ensureCommentLikesTable,
   ensureSiteLoopMediaTable,
   formatComment,
   formatPost,
@@ -15,6 +16,7 @@ import {
   invalid,
   notFound,
   ok,
+  optionalAuth,
   readJSON,
   requireAuth,
   requireRole,
@@ -52,16 +54,19 @@ async function handle(method: string, req: Request, slug: string[]) {
     if (slug[0] === 'auth' && slug[1] === 'refresh' && method === 'POST') return ok({ message: 'refresh token flow can be extended later' });
     if (slug[0] === 'auth' && slug[1] === 'logout' && method === 'POST') return ok({ message: 'ok' });
     if (slug[0] === 'auth' && slug[1] === 'me' && method === 'GET') return me(req);
+    if (slug[0] === 'me' && slug.length === 1 && method === 'PATCH') return updateMe(req);
 
     if (slug[0] === 'posts' && slug.length === 1 && method === 'GET') return listPosts(req);
     if (slug[0] === 'posts' && slug.length === 1 && method === 'POST') return createPost(req);
-    if (slug[0] === 'posts' && slug.length === 2 && method === 'GET') return getPost(slug[1]);
+    if (slug[0] === 'posts' && slug.length === 2 && method === 'GET') return getPost(slug[1], req);
     if (slug[0] === 'posts' && slug[2] === 'comments' && method === 'GET') return listComments(slug[1], req);
     if (slug[0] === 'posts' && slug[2] === 'comments' && method === 'POST') return createComment(req, slug[1]);
     if (slug[0] === 'posts' && slug[2] === 'like' && method === 'POST') return likePost(req, slug[1]);
     if (slug[0] === 'posts' && slug[2] === 'like' && method === 'DELETE') return unlikePost(req, slug[1]);
     if (slug[0] === 'posts' && slug[2] === 'favorite' && method === 'POST') return favoritePost(req, slug[1]);
     if (slug[0] === 'posts' && slug[2] === 'favorite' && method === 'DELETE') return unfavoritePost(req, slug[1]);
+    if (slug[0] === 'comments' && slug[2] === 'like' && method === 'POST') return likeComment(req, slug[1]);
+    if (slug[0] === 'comments' && slug[2] === 'like' && method === 'DELETE') return unlikeComment(req, slug[1]);
 
     if (slug[0] === 'me' && slug[1] === 'posts' && method === 'GET') return myPosts(req);
     if (slug[0] === 'me' && slug[1] === 'favorites' && method === 'GET') return myFavorites(req);
@@ -177,31 +182,59 @@ async function me(req: Request) {
   return ok(formatUser(result.rows[0]));
 }
 
+async function updateMe(req: Request) {
+  const claims = await requireAuth(req);
+  const body = await readJSON(req);
+  const avatarURL = String(body.avatar_url || '').trim();
+  const bio = String(body.bio || '').trim().slice(0, 255);
+  const updated = await getPool().query(
+    `update users
+        set avatar_url = $2,
+            bio = $3,
+            updated_at = now()
+      where id = $1
+      returning id, username, email, avatar_url, bio, role, status, created_at, updated_at`,
+    [claims.user_id, avatarURL, bio],
+  );
+  if (!updated.rowCount) return notFound('user not found');
+  return ok(formatUser(updated.rows[0]));
+}
+
 async function listPosts(req: Request) {
   const url = new URL(req.url);
   const limit = Math.min(Number(url.searchParams.get('limit') || '20') || 20, 100);
   const offset = Number(url.searchParams.get('offset') || '0') || 0;
+  const viewerID = optionalAuth(req)?.user_id || null;
   const result = await getPool().query(
-    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.role as author_role, u.status as author_status
+    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.role as author_role, u.status as author_status,
+            (pl.user_id is not null) as liked_by_me,
+            (f.user_id is not null) as favorited_by_me
      from posts p
      left join users u on u.id = p.author_id
+     left join post_likes pl on pl.post_id = p.id and pl.user_id = $3
+     left join favorites f on f.post_id = p.id and f.user_id = $3
      where p.status = 'published'
      order by p.created_at desc
      limit $1 offset $2`,
-    [limit, offset],
+    [limit, offset, viewerID],
   );
   return ok(result.rows.map(formatPost));
 }
 
-async function getPost(idRaw: string) {
+async function getPost(idRaw: string, req: Request) {
   const id = parseID(idRaw);
+  const viewerID = optionalAuth(req)?.user_id || null;
   const result = await getPool().query(
-    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.role as author_role, u.status as author_status
+    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.role as author_role, u.status as author_status,
+            (pl.user_id is not null) as liked_by_me,
+            (f.user_id is not null) as favorited_by_me
      from posts p
      left join users u on u.id = p.author_id
+     left join post_likes pl on pl.post_id = p.id and pl.user_id = $2
+     left join favorites f on f.post_id = p.id and f.user_id = $2
      where p.id = $1
      limit 1`,
-    [id],
+    [id, viewerID],
   );
   if (!result.rowCount) return notFound('post not found');
   return ok(formatPost(result.rows[0]));
@@ -231,18 +264,22 @@ async function createPost(req: Request) {
 }
 
 async function listComments(idRaw: string, req: Request) {
+  await ensureCommentLikesTable();
   const postID = parseID(idRaw);
   const url = new URL(req.url);
   const limit = Math.min(Number(url.searchParams.get('limit') || '20') || 20, 100);
   const offset = Number(url.searchParams.get('offset') || '0') || 0;
+  const viewerID = optionalAuth(req)?.user_id || null;
   const result = await getPool().query(
-    `select c.*, u.id as author_id, u.username as author_username, u.email as author_email, u.role as author_role, u.status as author_status
+    `select c.*, u.id as author_id, u.username as author_username, u.email as author_email, u.role as author_role, u.status as author_status,
+            (cl.user_id is not null) as liked_by_me
      from comments c
      left join users u on u.id = c.author_id
+     left join comment_likes cl on cl.comment_id = c.id and cl.user_id = $4
      where c.post_id = $1 and c.status = 'approved'
      order by c.created_at asc
      limit $2 offset $3`,
-    [postID, limit, offset],
+    [postID, limit, offset, viewerID],
   );
   return ok(result.rows.map(formatComment));
 }
@@ -281,6 +318,35 @@ async function likePost(req: Request, idRaw: string) {
     }
   });
   return ok({ liked: true });
+}
+
+async function likeComment(req: Request, idRaw: string) {
+  const claims = await requireAuth(req);
+  const commentID = parseID(idRaw);
+  await ensureCommentLikesTable();
+  await withTransaction(async (client) => {
+    const created = await client.query(
+      'insert into comment_likes (user_id, comment_id, created_at) values ($1, $2, now()) on conflict do nothing returning user_id',
+      [claims.user_id, commentID],
+    );
+    if (created.rowCount) {
+      await client.query('update comments set like_count = like_count + 1, updated_at = now() where id = $1', [commentID]);
+    }
+  });
+  return ok({ liked: true });
+}
+
+async function unlikeComment(req: Request, idRaw: string) {
+  const claims = await requireAuth(req);
+  const commentID = parseID(idRaw);
+  await ensureCommentLikesTable();
+  await withTransaction(async (client) => {
+    const deleted = await client.query('delete from comment_likes where user_id = $1 and comment_id = $2', [claims.user_id, commentID]);
+    if (deleted.rowCount) {
+      await client.query('update comments set like_count = greatest(like_count - 1, 0), updated_at = now() where id = $1', [commentID]);
+    }
+  });
+  return ok({ liked: false });
 }
 
 async function unlikePost(req: Request, idRaw: string) {
@@ -325,12 +391,16 @@ async function unfavoritePost(req: Request, idRaw: string) {
 async function myPosts(req: Request) {
   const claims = await requireAuth(req);
   const result = await getPool().query(
-    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.role as author_role, u.status as author_status
+    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.role as author_role, u.status as author_status,
+            (pl.user_id is not null) as liked_by_me,
+            (f.user_id is not null) as favorited_by_me
      from posts p
      left join users u on u.id = p.author_id
+     left join post_likes pl on pl.post_id = p.id and pl.user_id = $2
+     left join favorites f on f.post_id = p.id and f.user_id = $2
      where p.author_id = $1
      order by p.created_at desc`,
-    [claims.user_id],
+    [claims.user_id, claims.user_id],
   );
   return ok(result.rows.map(formatPost));
 }
@@ -338,13 +408,16 @@ async function myPosts(req: Request) {
 async function myFavorites(req: Request) {
   const claims = await requireAuth(req);
   const result = await getPool().query(
-    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.role as author_role, u.status as author_status
+    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.role as author_role, u.status as author_status,
+            (pl.user_id is not null) as liked_by_me,
+            true as favorited_by_me
      from favorites f
      join posts p on p.id = f.post_id
      left join users u on u.id = p.author_id
+     left join post_likes pl on pl.post_id = p.id and pl.user_id = $2
      where f.user_id = $1
      order by f.created_at desc`,
-    [claims.user_id],
+    [claims.user_id, claims.user_id],
   );
   return ok(result.rows.map(formatPost));
 }

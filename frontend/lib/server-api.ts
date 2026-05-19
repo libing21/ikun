@@ -202,6 +202,16 @@ export async function requireAuth(req: Request) {
   }
 }
 
+export function optionalAuth(req: Request): UserClaims | null {
+  const token = parseBearerToken(req);
+  if (!token) return null;
+  try {
+    return jwt.verify(token, env('JWT_SECRET', 'change-me')) as UserClaims;
+  } catch {
+    return null;
+  }
+}
+
 export function requireRole(role: string, roles: string[]) {
   if (!roles.includes(role)) {
     throw forbidden('permission denied');
@@ -251,6 +261,8 @@ export function formatPost(row: any) {
     favorite_count: Number(row.favorite_count || 0),
     comment_count: Number(row.comment_count || 0),
     view_count: Number(row.view_count || 0),
+    liked_by_me: Boolean(row.liked_by_me),
+    favorited_by_me: Boolean(row.favorited_by_me),
     created_at: row.created_at,
     updated_at: row.updated_at,
     published_at: row.published_at,
@@ -275,6 +287,7 @@ export function formatComment(row: any) {
     content: row.content,
     status: row.status,
     like_count: Number(row.like_count || 0),
+    liked_by_me: Boolean(row.liked_by_me),
     created_at: row.created_at,
     updated_at: row.updated_at,
     author: row.author_id
@@ -304,6 +317,7 @@ export function formatUser(row: any) {
 }
 
 let ensureSiteLoopMediaTablePromise: Promise<void> | null = null;
+let ensureCommentLikesTablePromise: Promise<void> | null = null;
 
 export async function ensureSiteLoopMediaTable() {
   if (!ensureSiteLoopMediaTablePromise) {
@@ -332,6 +346,29 @@ export async function ensureSiteLoopMediaTable() {
     });
   }
   await ensureSiteLoopMediaTablePromise;
+}
+
+export async function ensureCommentLikesTable() {
+  if (!ensureCommentLikesTablePromise) {
+    ensureCommentLikesTablePromise = (async () => {
+      await getPool().query(`
+        create table if not exists comment_likes (
+          user_id bigint not null references users(id),
+          comment_id bigint not null references comments(id),
+          created_at timestamptz not null default now(),
+          primary key (user_id, comment_id)
+        )
+      `);
+      await getPool().query(`
+        create index if not exists idx_comment_likes_comment_id
+        on comment_likes(comment_id, created_at desc)
+      `);
+    })().catch((error) => {
+      ensureCommentLikesTablePromise = null;
+      throw error;
+    });
+  }
+  await ensureCommentLikesTablePromise;
 }
 
 export function formatSiteLoopMedia(row: any) {

@@ -51,9 +51,22 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   return body.data;
 }
 
-export type User = { id: number; username: string; email: string; role: string; status: string };
-export type Post = { id: number; title: string; content: string; post_type: string; status: string; like_count: number; favorite_count: number; comment_count: number; created_at: string; author?: User };
-export type Comment = { id: number; content: string; status: string; author?: User; created_at: string };
+export type User = { id: number; username: string; email: string; avatar_url: string; bio: string; role: string; status: string };
+export type Post = {
+  id: number;
+  title: string;
+  content: string;
+  post_type: string;
+  status: string;
+  like_count: number;
+  favorite_count: number;
+  comment_count: number;
+  created_at: string;
+  liked_by_me?: boolean;
+  favorited_by_me?: boolean;
+  author?: User;
+};
+export type Comment = { id: number; content: string; status: string; like_count: number; liked_by_me?: boolean; author?: User; created_at: string };
 export type Conversation = { id: number; title: string; persona_code: string; created_at: string };
 export type AIMessage = { id: number; role: string; content: string; safety_label: string; created_at: string };
 export type ModerationJob = {
