@@ -20,6 +20,15 @@ type ModerationResult = {
   decision: string;
 };
 
+type UploadedMediaAsset = {
+  url: string;
+  mime: string;
+  size: number;
+  media_type: 'image' | 'video';
+  kind: 'image' | 'video' | 'poster';
+  object_key: string;
+};
+
 const globalState = globalThis as typeof globalThis & {
   __ikunPgPool?: Pool;
   __ikunBackendEnv?: BackendEnvCache;
@@ -257,6 +266,14 @@ export function formatPost(row: any) {
     title: row.title,
     content: row.content || '',
     post_type: row.post_type,
+    media_url: row.media_url || '',
+    media_type: row.media_type || '',
+    poster_url: row.poster_url || '',
+    media_mime: row.media_mime || '',
+    media_size: Number(row.media_size || 0),
+    media_width: Number(row.media_width || 0),
+    media_height: Number(row.media_height || 0),
+    duration_seconds: Number(row.duration_seconds || 0),
     status: row.status,
     visibility: row.visibility,
     like_count: Number(row.like_count || 0),
@@ -397,11 +414,80 @@ function guessFileExtension(fileName: string, mimeType: string) {
   if (cleanName.endsWith('.png')) return 'png';
   if (cleanName.endsWith('.webp')) return 'webp';
   if (cleanName.endsWith('.gif')) return 'gif';
+  if (cleanName.endsWith('.mp4')) return 'mp4';
+  if (cleanName.endsWith('.webm')) return 'webm';
   if (cleanName.endsWith('.jpg') || cleanName.endsWith('.jpeg')) return 'jpg';
   if (mimeType === 'image/png') return 'png';
   if (mimeType === 'image/webp') return 'webp';
   if (mimeType === 'image/gif') return 'gif';
+  if (mimeType === 'video/mp4') return 'mp4';
+  if (mimeType === 'video/webm') return 'webm';
   return 'jpg';
+}
+
+function createSupabaseAdminClient(projectURL: string, serviceRoleKey: string) {
+  return createClient(projectURL, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
+
+function validatePostMediaFile(kind: 'image' | 'video' | 'poster', file: File) {
+  const imageMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  const videoMimeTypes = ['video/mp4', 'video/webm'];
+
+  if (kind === 'video') {
+    if (!videoMimeTypes.includes(file.type)) {
+      throw new Error('video must be mp4 or webm');
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      throw new Error('video must be <= 50MB');
+    }
+    return { folder: 'videos', mediaType: 'video' as const };
+  }
+
+  if (!imageMimeTypes.includes(file.type)) {
+    throw new Error(`${kind} must be jpg/png/webp/gif`);
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error(`${kind} image must be <= 10MB`);
+  }
+  return { folder: kind === 'poster' ? 'posters' : 'images', mediaType: 'image' as const };
+}
+
+export async function uploadPostMediaToSupabase(userID: number, file: File, kind: 'image' | 'video' | 'poster'): Promise<UploadedMediaAsset> {
+  const projectURL = env('SUPABASE_PROJECT_URL');
+  const serviceRoleKey = env('SUPABASE_SERVICE_ROLE_KEY');
+  const bucket = env('SUPABASE_STORAGE_BUCKET', 'community-media');
+  if (!projectURL || !serviceRoleKey) {
+    throw new Error('SUPABASE_PROJECT_URL and SUPABASE_SERVICE_ROLE_KEY are required for media upload');
+  }
+
+  const { folder, mediaType } = validatePostMediaFile(kind, file);
+  const ext = guessFileExtension(file.name || '', file.type || '');
+  const objectKey = `posts/${folder}/${userID}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  const supabase = createSupabaseAdminClient(projectURL, serviceRoleKey);
+  const data = Buffer.from(await file.arrayBuffer());
+  const uploadResult = await supabase.storage.from(bucket).upload(objectKey, data, {
+    contentType: file.type || 'application/octet-stream',
+    cacheControl: '3600',
+    upsert: true,
+  });
+  if (uploadResult.error) {
+    throw new Error(`avatar upload failed: ${uploadResult.error.message}`);
+  }
+
+  const publicURL = supabase.storage.from(bucket).getPublicUrl(objectKey).data.publicUrl;
+  return {
+    url: publicURL,
+    mime: file.type || 'application/octet-stream',
+    size: file.size,
+    media_type: mediaType,
+    kind,
+    object_key: objectKey,
+  };
 }
 
 export async function uploadAvatarToSupabase(userID: number, file: File) {
@@ -420,12 +506,7 @@ export async function uploadAvatarToSupabase(userID: number, file: File) {
 
   const ext = guessFileExtension(file.name || '', file.type || '');
   const objectKey = `avatars/${userID}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
-  const supabase = createClient(projectURL, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
+  const supabase = createSupabaseAdminClient(projectURL, serviceRoleKey);
   const data = Buffer.from(await file.arrayBuffer());
   const uploadResult = await supabase.storage.from(bucket).upload(objectKey, data, {
     contentType: file.type || 'application/octet-stream',

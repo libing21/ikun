@@ -23,6 +23,7 @@ import {
   signToken,
   unauthorized,
   uploadAvatarToSupabase,
+  uploadPostMediaToSupabase,
   withTransaction,
 } from '@/lib/server-api';
 
@@ -57,6 +58,7 @@ async function handle(method: string, req: Request, slug: string[]) {
     if (slug[0] === 'auth' && slug[1] === 'me' && method === 'GET') return me(req);
     if (slug[0] === 'me' && slug[1] === 'avatar' && method === 'POST') return uploadMyAvatar(req);
     if (slug[0] === 'me' && slug.length === 1 && method === 'PATCH') return updateMe(req);
+    if (slug[0] === 'uploads' && slug[1] === 'post-media' && slug.length === 2 && method === 'POST') return uploadPostMedia(req);
 
     if (slug[0] === 'posts' && slug.length === 1 && method === 'GET') return listPosts(req);
     if (slug[0] === 'posts' && slug.length === 1 && method === 'POST') return createPost(req);
@@ -221,6 +223,19 @@ async function uploadMyAvatar(req: Request) {
   return ok(formatUser(updated.rows[0]));
 }
 
+async function uploadPostMedia(req: Request) {
+  const claims = await requireAuth(req);
+  const formData = await req.formData();
+  const file = formData.get('file');
+  const kindRaw = String(formData.get('kind') || '').trim().toLowerCase();
+  const kind = (kindRaw || 'image') as 'image' | 'video' | 'poster';
+  if (!(file instanceof File)) return invalid('media file required');
+  if (!['image', 'video', 'poster'].includes(kind)) return invalid('kind must be image, video or poster');
+
+  const uploaded = await uploadPostMediaToSupabase(claims.user_id, file, kind);
+  return ok(uploaded, 201);
+}
+
 async function listPosts(req: Request) {
   const url = new URL(req.url);
   const limit = Math.min(Number(url.searchParams.get('limit') || '20') || 20, 100);
@@ -267,16 +282,31 @@ async function createPost(req: Request) {
   const title = String(body.title || '').trim();
   const content = String(body.content || '').trim();
   const postType = String(body.post_type || 'text').trim() || 'text';
+  const mediaURL = String(body.media_url || '').trim();
+  const mediaType = String(body.media_type || '').trim();
+  const posterURL = String(body.poster_url || '').trim();
+  const mediaMime = String(body.media_mime || '').trim();
+  const mediaSize = Math.max(Number(body.media_size || 0) || 0, 0);
+  const mediaWidth = Math.max(Number(body.media_width || 0) || 0, 0);
+  const mediaHeight = Math.max(Number(body.media_height || 0) || 0, 0);
+  const durationSeconds = Math.max(Number(body.duration_seconds || 0) || 0, 0);
   if (!title) return invalid('title required');
+  if (!['text', 'image', 'video'].includes(postType)) return invalid('post_type must be text, image or video');
+  if (postType === 'image' && (!mediaURL || mediaType !== 'image')) return invalid('image post requires uploaded image');
+  if (postType === 'video' && (!mediaURL || mediaType !== 'video')) return invalid('video post requires uploaded video');
+  if (postType === 'text' && (mediaURL || posterURL)) return invalid('text post cannot include media');
 
   const moderation = checkText(`${title}\n${content}`);
   const status = moderation.allowed ? 'pending_review' : 'rejected';
   const post = await withTransaction(async (client) => {
     const inserted = await client.query(
-      `insert into posts (author_id, title, content, post_type, status, visibility, like_count, favorite_count, comment_count, view_count, created_at, updated_at)
-       values ($1, $2, $3, $4, $5, 'public', 0, 0, 0, 0, now(), now())
+      `insert into posts (
+         author_id, title, content, post_type, media_url, media_type, poster_url, media_mime, media_size, media_width, media_height, duration_seconds,
+         status, visibility, like_count, favorite_count, comment_count, view_count, created_at, updated_at
+       )
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'public', 0, 0, 0, 0, now(), now())
        returning *`,
-      [claims.user_id, title, content, postType, status],
+      [claims.user_id, title, content, postType, mediaURL, mediaType, posterURL, mediaMime, mediaSize, mediaWidth, mediaHeight, durationSeconds, status],
     );
     await createModerationJob(client, 'post', inserted.rows[0].id, moderation.risk, moderation);
     return inserted.rows[0];

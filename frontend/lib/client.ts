@@ -59,6 +59,14 @@ export type Post = {
   title: string;
   content: string;
   post_type: string;
+  media_url?: string;
+  media_type?: string;
+  poster_url?: string;
+  media_mime?: string;
+  media_size?: number;
+  media_width?: number;
+  media_height?: number;
+  duration_seconds?: number;
   status: string;
   like_count: number;
   favorite_count: number;
@@ -105,3 +113,11 @@ export type GloryRankUser = {
   score: number;
 };
 export type Report = { id: number; target_type: string; target_id: number; reason_code: string; reason_text: string; status: string; created_at: string };
+export type UploadedMediaAsset = {
+  url: string;
+  mime: string;
+  size: number;
+  media_type: 'image' | 'video';
+  kind: 'image' | 'video' | 'poster';
+  object_key: string;
+};
