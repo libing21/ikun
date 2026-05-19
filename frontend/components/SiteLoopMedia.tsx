@@ -66,26 +66,31 @@ export function SiteLoopMedia() {
             ))}
           </div>
         </div>
-        <div className="overflow-hidden rounded-[1.35rem] border border-cyan-100 bg-slate-950/5">
-        {active.media_type === 'video' ? (
-          <video
+        <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-cyan-100">
+          <div
             key={active.id}
-            src={active.media_url}
-            poster={active.poster_url || undefined}
-            className="h-48 w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            controls
+            className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-fuchsia-400 animate-media-progress"
           />
-        ) : (
-          <img
-            src={active.media_url}
-            alt={active.title}
-            className="h-48 w-full object-cover"
-          />
-        )}
+        </div>
+        <div key={active.id} className="animate-soft-fade-in overflow-hidden rounded-[1.35rem] border border-cyan-100 bg-slate-950/5">
+          {active.media_type === 'video' ? (
+            <video
+              src={active.media_url}
+              poster={active.poster_url || undefined}
+              className="h-48 w-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+              controls
+            />
+          ) : (
+            <img
+              src={active.media_url}
+              alt={active.title}
+              className="h-48 w-full object-cover"
+            />
+          )}
         </div>
       </div>
     </div>
