@@ -79,6 +79,28 @@ export default function PostDetailPage({ params }: { params: { id: string } }) {
     <div className="space-y-4">
       <article className="card">
         <h1 className="text-3xl font-bold">{post.title}</h1>
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+          <span>作者：{post.author?.username || '匿名创作者'}</span>
+          {post.media_type === 'image' ? <span className="rounded-full bg-cyan-50 px-3 py-1 text-cyan-700">图片帖</span> : null}
+          {post.media_type === 'video' ? <span className="rounded-full bg-cyan-50 px-3 py-1 text-cyan-700">视频帖</span> : null}
+        </div>
+        {post.media_type === 'image' && post.media_url ? (
+          <div className="mt-5 overflow-hidden rounded-[1.8rem] border border-fuchsia-100 bg-white shadow-sm">
+            <img src={post.media_url} alt={post.title} className="max-h-[42rem] w-full object-contain bg-slate-50" />
+          </div>
+        ) : null}
+        {post.media_type === 'video' && post.media_url ? (
+          <div className="mt-5 overflow-hidden rounded-[1.8rem] border border-cyan-100 bg-slate-950 shadow-sm">
+            <video
+              src={post.media_url}
+              poster={post.poster_url || undefined}
+              className="max-h-[42rem] w-full bg-black"
+              controls
+              playsInline
+              preload="metadata"
+            />
+          </div>
+        ) : null}
         <p className="mt-4 whitespace-pre-wrap text-slate-600">{post.content}</p>
         <div className="mt-4 flex flex-wrap gap-3">
           <button type="button" onClick={togglePostLike} className={post.liked_by_me ? 'from-rose-500 to-pink-400' : undefined}>

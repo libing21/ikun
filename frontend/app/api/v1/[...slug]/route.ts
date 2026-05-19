@@ -620,6 +620,9 @@ async function moderationJobs(req: Request) {
             p.title as post_title,
             p.content as post_content,
             p.status as post_status,
+            p.media_type as post_media_type,
+            p.media_url as post_media_url,
+            p.poster_url as post_poster_url,
             pu.username as post_author_username,
             c.content as comment_content,
             c.status as comment_status,
@@ -640,6 +643,9 @@ async function moderationJobs(req: Request) {
       target_content: row.post_content || row.comment_content || '',
       target_status: row.post_status || row.comment_status || '',
       target_author_username: row.post_author_username || row.comment_author_username || '',
+      target_media_type: row.post_media_type || '',
+      target_media_url: row.post_media_url || '',
+      target_poster_url: row.post_poster_url || '',
     })),
   );
 }

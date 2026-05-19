@@ -47,6 +47,8 @@ export default function AdminModerationPage() {
         const taskStatus = JOB_STATUS_LABEL[job.status] || job.status;
         const targetStatus = TARGET_STATUS_LABEL[job.target_status || ''] || job.target_status || '未知';
         const content = job.target_content?.trim() || '暂无正文';
+        const isImagePost = job.target_type === 'post' && job.target_media_type === 'image' && Boolean(job.target_media_url);
+        const isVideoPost = job.target_type === 'post' && job.target_media_type === 'video' && Boolean(job.target_media_url);
 
         return (
           <article key={job.id} className="card space-y-3">
@@ -66,6 +68,34 @@ export default function AdminModerationPage() {
 
             <div className="rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700">
               <p className="whitespace-pre-wrap">{content}</p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-100 bg-white/90 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-sm font-bold text-slate-800">媒体内容</p>
+                {isImagePost ? <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">图片帖</span> : null}
+                {isVideoPost ? <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">视频帖</span> : null}
+                {!isImagePost && !isVideoPost ? <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">文本帖 / 无媒体</span> : null}
+              </div>
+
+              {isImagePost ? (
+                <div className="overflow-hidden rounded-[1.5rem] border border-fuchsia-100 bg-slate-50 shadow-sm">
+                  <img src={job.target_media_url} alt={job.target_title || '审核图片'} className="max-h-[28rem] w-full object-contain" />
+                </div>
+              ) : null}
+
+              {isVideoPost ? (
+                <div className="overflow-hidden rounded-[1.5rem] border border-cyan-100 bg-slate-950 shadow-sm">
+                  <video
+                    src={job.target_media_url}
+                    poster={job.target_poster_url || undefined}
+                    className="max-h-[28rem] w-full bg-black"
+                    controls
+                    playsInline
+                    preload="metadata"
+                  />
+                </div>
+              ) : null}
             </div>
 
             <div className="flex gap-2">

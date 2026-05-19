@@ -18,6 +18,8 @@ export function PostCard({ post }: { post: Post }) {
   const [heartPulse, setHeartPulse] = useState(0);
   const authorName = post.author?.username || '匿名创作者';
   const authorInitial = authorName.slice(0, 1).toUpperCase();
+  const hasImage = post.media_type === 'image' && Boolean(post.media_url);
+  const hasVideo = post.media_type === 'video' && Boolean(post.media_url);
 
   async function toggleLike() {
     try {
@@ -43,6 +45,37 @@ export function PostCard({ post }: { post: Post }) {
         <Link href={`/posts/${post.id}`} className="text-lg font-bold text-slate-950">{post.title}</Link>
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusMeta.className}`}>{statusMeta.label}</span>
       </div>
+      {hasImage ? (
+        <Link href={`/posts/${post.id}`} className="block overflow-hidden rounded-[1.5rem] border border-fuchsia-100 bg-white/80 shadow-sm">
+          <img src={post.media_url} alt={post.title} className="h-72 w-full object-cover transition duration-300 hover:scale-[1.02]" />
+        </Link>
+      ) : null}
+      {hasVideo ? (
+        <Link href={`/posts/${post.id}`} className="block overflow-hidden rounded-[1.5rem] border border-cyan-100 bg-slate-950/90 shadow-sm">
+          {post.poster_url ? (
+            <div className="relative">
+              <img src={post.poster_url} alt={`${post.title} 视频封面`} className="h-72 w-full object-cover opacity-90" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 shadow-xl">
+                  <svg viewBox="0 0 24 24" className="ml-1 h-6 w-6 fill-cyan-500 text-cyan-500">
+                    <path d="M8 6.82v10.36c0 .79.87 1.27 1.54.84l8.14-5.18a1 1 0 0 0 0-1.68L9.54 5.98A1 1 0 0 0 8 6.82Z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex h-72 flex-col items-center justify-center gap-3 bg-gradient-to-br from-slate-900 via-cyan-950 to-slate-900 text-white">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10">
+                <svg viewBox="0 0 24 24" className="ml-1 h-6 w-6 fill-cyan-300 text-cyan-300">
+                  <path d="M8 6.82v10.36c0 .79.87 1.27 1.54.84l8.14-5.18a1 1 0 0 0 0-1.68L9.54 5.98A1 1 0 0 0 8 6.82Z" />
+                </svg>
+              </div>
+              <p className="text-sm font-semibold text-cyan-100">视频帖，点击进入播放</p>
+            </div>
+          )}
+        </Link>
+      ) : null}
       <p className="line-clamp-3 text-sm text-slate-600">{post.content || '暂无正文'}</p>
       <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
         <div className="flex items-center gap-2">
@@ -68,6 +101,8 @@ export function PostCard({ post }: { post: Post }) {
         </button>
         <span>收藏 {post.favorite_count}</span>
         <span>评论 {post.comment_count}</span>
+        {hasImage ? <span className="rounded-full bg-cyan-50 px-3 py-1 text-cyan-700">图片帖</span> : null}
+        {hasVideo ? <span className="rounded-full bg-cyan-50 px-3 py-1 text-cyan-700">视频帖</span> : null}
         <Link href={`/posts/${post.id}`} className="font-semibold text-fuchsia-600">去评论</Link>
       </div>
       {message ? <p className="text-xs text-fuchsia-600">{message}</p> : null}
