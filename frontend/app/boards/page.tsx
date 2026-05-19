@@ -1,5 +1,4 @@
-import Link from 'next/link';
-import { POST_BOARDS } from '@/lib/post-taxonomy';
+import { BoardPlazaGrid } from '@/components/BoardPlazaGrid';
 
 export default function BoardsPage() {
   return (
@@ -12,22 +11,7 @@ export default function BoardsPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {POST_BOARDS.map((board) => (
-          <Link
-            key={board.slug}
-            href={`/boards/${board.slug}`}
-            className="card rounded-[2rem] border border-white/70 bg-white/80 p-6 transition hover:-translate-y-1 hover:shadow-2xl hover:shadow-fuchsia-100"
-          >
-            <div className="space-y-3">
-              <span className="inline-flex rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-700">{board.name}</span>
-              <h2 className="text-xl font-black text-slate-900">{board.name}</h2>
-              <p className="text-sm leading-6 text-slate-600">{board.description}</p>
-              <span className="inline-flex text-sm font-semibold text-fuchsia-600">进入板块</span>
-            </div>
-          </Link>
-        ))}
-      </section>
+      <BoardPlazaGrid />
     </div>
   );
 }

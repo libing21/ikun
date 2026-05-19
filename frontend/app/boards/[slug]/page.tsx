@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { BoardHeaderStats } from '@/components/BoardHeaderStats';
 import { FilteredPostFeed } from '@/components/FilteredPostFeed';
 import { findBoardBySlug, isValidBoardSlug, POST_BOARDS } from '@/lib/post-taxonomy';
 
@@ -22,6 +23,7 @@ export default function BoardDetailPage({ params }: { params: { slug: string } }
           </div>
           <h1 className="text-4xl font-black">{board.name}</h1>
           <p className="max-w-2xl text-sm leading-7 text-white/90">{board.description}</p>
+          <BoardHeaderStats slug={board.slug} />
           <div className="flex flex-wrap gap-2">
             {POST_BOARDS.map((item) => (
               <Link

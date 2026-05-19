@@ -140,6 +140,13 @@ export type UploadedMediaAsset = {
   object_key: string;
 };
 export type PostTaxonomy = {
-  boards: Array<{ slug: string; name: string; description: string }>;
+  boards: Array<{
+    slug: string;
+    name: string;
+    description: string;
+    post_count?: number;
+    recent_post_count?: number;
+    latest_post_at?: string;
+  }>;
   tags: string[];
 };

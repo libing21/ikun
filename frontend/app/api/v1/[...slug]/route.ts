@@ -63,7 +63,7 @@ async function handle(method: string, req: Request, slug: string[]) {
 
     if (slug[0] === 'posts' && slug.length === 1 && method === 'GET') return listPosts(req);
     if (slug[0] === 'posts' && slug.length === 1 && method === 'POST') return createPost(req);
-    if (slug[0] === 'posts' && slug[1] === 'taxonomy' && slug.length === 2 && method === 'GET') return ok({ boards: POST_BOARDS, tags: POST_TAGS });
+    if (slug[0] === 'posts' && slug[1] === 'taxonomy' && slug.length === 2 && method === 'GET') return listPostTaxonomy();
     if (slug[0] === 'posts' && slug.length === 2 && method === 'GET') return getPost(slug[1], req);
     if (slug[0] === 'posts' && slug[2] === 'comments' && method === 'GET') return listComments(slug[1], req);
     if (slug[0] === 'posts' && slug[2] === 'comments' && method === 'POST') return createComment(req, slug[1]);
@@ -101,6 +101,46 @@ async function handle(method: string, req: Request, slug: string[]) {
     console.error('[api/v1]', error);
     return internal(error instanceof Error ? error.message : 'internal error');
   }
+}
+
+async function listPostTaxonomy() {
+  const statsResult = await getPool().query(
+    `select
+        p.board_slug,
+        count(*)::int as post_count,
+        count(*) filter (where p.created_at >= now() - interval '1 day')::int as recent_post_count,
+        max(p.created_at) as latest_post_at
+      from posts p
+     where p.status = 'published'
+     group by p.board_slug`,
+  );
+
+  const statsMap = new Map<
+    string,
+    {
+      post_count: number;
+      recent_post_count: number;
+      latest_post_at: string;
+    }
+  >();
+
+  for (const row of statsResult.rows) {
+    statsMap.set(String(row.board_slug || ''), {
+      post_count: Number(row.post_count || 0),
+      recent_post_count: Number(row.recent_post_count || 0),
+      latest_post_at: row.latest_post_at || '',
+    });
+  }
+
+  return ok({
+    boards: POST_BOARDS.map((board) => ({
+      ...board,
+      post_count: statsMap.get(board.slug)?.post_count || 0,
+      recent_post_count: statsMap.get(board.slug)?.recent_post_count || 0,
+      latest_post_at: statsMap.get(board.slug)?.latest_post_at || '',
+    })),
+    tags: POST_TAGS,
+  });
 }
 
 function parseID(value?: string) {
