@@ -44,3 +44,19 @@ button { @apply rounded-xl bg-gradient-to-r from-fuchsia-500 to-cyan-400 px-4 py
 .animate-media-progress {
   animation: media-progress 4500ms linear forwards;
 }
+
+@keyframes heart-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-heart-pop {
+  animation: heart-pop 280ms ease-out;
+}

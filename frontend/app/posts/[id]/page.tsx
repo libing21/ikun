@@ -7,6 +7,8 @@ export default function PostDetailPage({ params }: { params: { id: string } }) {
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [message, setMessage] = useState('');
+  const [postHeartPulse, setPostHeartPulse] = useState(0);
+  const [commentPulseMap, setCommentPulseMap] = useState<Record<number, number>>({});
   async function load() {
     setPost(await api<Post>(`/posts/${params.id}`));
     setComments(await api<Comment[]>(`/posts/${params.id}/comments`));
@@ -39,6 +41,7 @@ export default function PostDetailPage({ params }: { params: { id: string } }) {
     if (!post) return;
     try {
       await api(`/posts/${params.id}/like`, { method: post.liked_by_me ? 'DELETE' : 'POST' });
+      setPostHeartPulse((value) => value + 1);
       setPost({
         ...post,
         liked_by_me: !post.liked_by_me,
@@ -54,6 +57,7 @@ export default function PostDetailPage({ params }: { params: { id: string } }) {
     if (!target) return;
     try {
       await api(`/comments/${commentID}/like`, { method: target.liked_by_me ? 'DELETE' : 'POST' });
+      setCommentPulseMap((state) => ({ ...state, [commentID]: (state[commentID] || 0) + 1 }));
       setComments((items) =>
         items.map((comment) =>
           comment.id === commentID
@@ -78,7 +82,12 @@ export default function PostDetailPage({ params }: { params: { id: string } }) {
         <p className="mt-4 whitespace-pre-wrap text-slate-600">{post.content}</p>
         <div className="mt-4 flex flex-wrap gap-3">
           <button type="button" onClick={togglePostLike} className={post.liked_by_me ? 'from-rose-500 to-pink-400' : undefined}>
-            {post.liked_by_me ? `已点赞 ${post.like_count}` : `点赞 ${post.like_count}`}
+            <span className="inline-flex items-center gap-2">
+              <svg key={postHeartPulse} viewBox="0 0 24 24" className={`h-4 w-4 ${postHeartPulse ? 'animate-heart-pop' : ''} ${post.liked_by_me ? 'fill-white stroke-white' : 'fill-none stroke-current'}`} strokeWidth="2">
+                <path d="M12 21s-6.716-4.35-9.193-8.165C.87 9.75 2.008 5.5 6.027 4.603A5.48 5.48 0 0 1 12 6.438a5.48 5.48 0 0 1 5.973-1.835c4.019.897 5.157 5.147 3.22 8.232C18.716 16.65 12 21 12 21Z" />
+              </svg>
+              {post.liked_by_me ? `已点赞 ${post.like_count}` : `点赞 ${post.like_count}`}
+            </span>
           </button>
           <button onClick={() => api(`/posts/${params.id}/favorite`, { method: 'POST' })}>收藏</button>
           <button onClick={report}>举报</button>
@@ -99,9 +108,9 @@ export default function PostDetailPage({ params }: { params: { id: string } }) {
               <button
                 type="button"
                 onClick={() => toggleCommentLike(commentItem.id)}
-                className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs shadow-sm ${commentItem.liked_by_me ? 'bg-rose-50 text-rose-600' : 'bg-white text-slate-500'}`}
+                className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs shadow-sm transition-transform duration-150 hover:-translate-y-0.5 active:scale-95 ${commentItem.liked_by_me ? 'bg-rose-50 text-rose-600 shadow-rose-100' : 'bg-white text-slate-500'}`}
               >
-                <svg viewBox="0 0 24 24" className={`h-4 w-4 ${commentItem.liked_by_me ? 'fill-rose-500 stroke-rose-500' : 'fill-none stroke-current'}`} strokeWidth="2">
+                <svg key={commentPulseMap[commentItem.id] || 0} viewBox="0 0 24 24" className={`h-4 w-4 ${(commentPulseMap[commentItem.id] || 0) ? 'animate-heart-pop' : ''} ${commentItem.liked_by_me ? 'fill-rose-500 stroke-rose-500' : 'fill-none stroke-current'}`} strokeWidth="2">
                   <path d="M12 21s-6.716-4.35-9.193-8.165C.87 9.75 2.008 5.5 6.027 4.603A5.48 5.48 0 0 1 12 6.438a5.48 5.48 0 0 1 5.973-1.835c4.019.897 5.157 5.147 3.22 8.232C18.716 16.65 12 21 12 21Z" />
                 </svg>
                 <span>{commentItem.like_count}</span>

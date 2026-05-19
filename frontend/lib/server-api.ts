@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Pool, PoolClient } from 'pg';
@@ -384,6 +385,54 @@ export function formatSiteLoopMedia(row: any) {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
+}
+
+function guessFileExtension(fileName: string, mimeType: string) {
+  const cleanName = fileName.toLowerCase();
+  if (cleanName.endsWith('.png')) return 'png';
+  if (cleanName.endsWith('.webp')) return 'webp';
+  if (cleanName.endsWith('.gif')) return 'gif';
+  if (cleanName.endsWith('.jpg') || cleanName.endsWith('.jpeg')) return 'jpg';
+  if (mimeType === 'image/png') return 'png';
+  if (mimeType === 'image/webp') return 'webp';
+  if (mimeType === 'image/gif') return 'gif';
+  return 'jpg';
+}
+
+export async function uploadAvatarToSupabase(userID: number, file: File) {
+  const projectURL = env('SUPABASE_PROJECT_URL');
+  const serviceRoleKey = env('SUPABASE_SERVICE_ROLE_KEY');
+  const bucket = env('SUPABASE_STORAGE_BUCKET', 'community-media');
+  if (!projectURL || !serviceRoleKey) {
+    throw new Error('SUPABASE_PROJECT_URL and SUPABASE_SERVICE_ROLE_KEY are required for avatar upload');
+  }
+  if (!file.type.startsWith('image/')) {
+    throw new Error('avatar must be an image');
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error('avatar image must be <= 5MB');
+  }
+
+  const ext = guessFileExtension(file.name || '', file.type || '');
+  const objectKey = `avatars/${userID}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  const uploadURL = `${projectURL.replace(/\/$/, '')}/storage/v1/object/${bucket}/${objectKey}`;
+  const data = Buffer.from(await file.arrayBuffer());
+  const uploadRes = await fetch(uploadURL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${serviceRoleKey}`,
+      apikey: serviceRoleKey,
+      'Content-Type': file.type || 'application/octet-stream',
+      'x-upsert': 'true',
+    },
+    body: data,
+  });
+  if (!uploadRes.ok) {
+    const detail = await uploadRes.text();
+    throw new Error(`avatar upload failed: ${detail || uploadRes.statusText}`);
+  }
+
+  return `${projectURL.replace(/\/$/, '')}/storage/v1/object/public/${bucket}/${objectKey}`;
 }
 
 export async function readJSON(req: Request) {

@@ -22,6 +22,7 @@ import {
   requireRole,
   signToken,
   unauthorized,
+  uploadAvatarToSupabase,
   withTransaction,
 } from '@/lib/server-api';
 
@@ -54,6 +55,7 @@ async function handle(method: string, req: Request, slug: string[]) {
     if (slug[0] === 'auth' && slug[1] === 'refresh' && method === 'POST') return ok({ message: 'refresh token flow can be extended later' });
     if (slug[0] === 'auth' && slug[1] === 'logout' && method === 'POST') return ok({ message: 'ok' });
     if (slug[0] === 'auth' && slug[1] === 'me' && method === 'GET') return me(req);
+    if (slug[0] === 'me' && slug[1] === 'avatar' && method === 'POST') return uploadMyAvatar(req);
     if (slug[0] === 'me' && slug.length === 1 && method === 'PATCH') return updateMe(req);
 
     if (slug[0] === 'posts' && slug.length === 1 && method === 'GET') return listPosts(req);
@@ -195,6 +197,25 @@ async function updateMe(req: Request) {
       where id = $1
       returning id, username, email, avatar_url, bio, role, status, created_at, updated_at`,
     [claims.user_id, avatarURL, bio],
+  );
+  if (!updated.rowCount) return notFound('user not found');
+  return ok(formatUser(updated.rows[0]));
+}
+
+async function uploadMyAvatar(req: Request) {
+  const claims = await requireAuth(req);
+  const formData = await req.formData();
+  const file = formData.get('file');
+  if (!(file instanceof File)) return invalid('avatar file required');
+
+  const avatarURL = await uploadAvatarToSupabase(claims.user_id, file);
+  const updated = await getPool().query(
+    `update users
+        set avatar_url = $2,
+            updated_at = now()
+      where id = $1
+      returning id, username, email, avatar_url, bio, role, status, created_at, updated_at`,
+    [claims.user_id, avatarURL],
   );
   if (!updated.rowCount) return notFound('user not found');
   return ok(formatUser(updated.rows[0]));
