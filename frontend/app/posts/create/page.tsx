@@ -1,7 +1,8 @@
 'use client';
 
-import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
-import { api, Post, UploadedMediaAsset } from '@/lib/client';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { api, Post, PostTaxonomy, UploadedMediaAsset } from '@/lib/client';
+import { DEFAULT_POST_BOARD, POST_BOARDS, POST_TAGS } from '@/lib/post-taxonomy';
 
 type PostType = 'text' | 'image' | 'video';
 
@@ -9,6 +10,9 @@ export default function CreatePostPage() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [postType, setPostType] = useState<PostType>('text');
+  const [taxonomy, setTaxonomy] = useState<PostTaxonomy>({ boards: POST_BOARDS, tags: POST_TAGS });
+  const [boardSlug, setBoardSlug] = useState(DEFAULT_POST_BOARD.slug);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [message, setMessage] = useState('');
@@ -17,6 +21,14 @@ export default function CreatePostPage() {
 
   const mediaPreviewURL = useMemo(() => (mediaFile ? URL.createObjectURL(mediaFile) : ''), [mediaFile]);
   const posterPreviewURL = useMemo(() => (posterFile ? URL.createObjectURL(posterFile) : ''), [posterFile]);
+
+  useEffect(() => {
+    api<PostTaxonomy>('/posts/taxonomy')
+      .then(setTaxonomy)
+      .catch(() => {
+        setTaxonomy({ boards: POST_BOARDS, tags: POST_TAGS });
+      });
+  }, []);
 
   function resetMediaState(nextType: PostType) {
     setPostType(nextType);
@@ -33,6 +45,18 @@ export default function CreatePostPage() {
   function onPosterSelected(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] || null;
     setPosterFile(file);
+  }
+
+  function toggleTag(tag: string) {
+    setSelectedTags((current) => {
+      if (current.includes(tag)) {
+        return current.filter((item) => item !== tag);
+      }
+      if (current.length >= 3) {
+        return current;
+      }
+      return [...current, tag];
+    });
   }
 
   async function uploadMedia(file: File, kind: 'image' | 'video' | 'poster') {
@@ -71,6 +95,8 @@ export default function CreatePostPage() {
           title,
           content,
           post_type: postType,
+          board_slug: boardSlug,
+          tags: selectedTags,
           media_url: uploadedMedia?.url || '',
           media_type: uploadedMedia?.media_type || '',
           poster_url: uploadedPoster?.url || '',
@@ -81,6 +107,8 @@ export default function CreatePostPage() {
       setMessage(`已提交审核，帖子 ID：${post.id}`);
       setTitle('');
       setContent('');
+      setBoardSlug(DEFAULT_POST_BOARD.slug);
+      setSelectedTags([]);
       resetMediaState('text');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : '提交失败');
@@ -123,6 +151,42 @@ export default function CreatePostPage() {
               className="w-full"
             />
           </label>
+
+          <div className="grid gap-4 md:grid-cols-[220px_1fr]">
+            <label className="block space-y-2">
+              <span className="text-sm font-semibold text-slate-700">所属板块</span>
+              <select value={boardSlug} onChange={(e) => setBoardSlug(e.target.value)}>
+                {taxonomy.boards.map((board) => (
+                  <option key={board.slug} value={board.slug}>
+                    {board.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs leading-5 text-slate-500">{taxonomy.boards.find((board) => board.slug === boardSlug)?.description || '给帖子选一个更合适的归属区。'}</p>
+            </label>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold text-slate-700">帖子标签</span>
+                <span className="text-xs text-slate-500">最多选 3 个</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {taxonomy.tags.map((tag) => {
+                  const active = selectedTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggleTag(tag)}
+                      className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${active ? 'border-fuchsia-400 bg-fuchsia-500 text-white shadow-lg shadow-fuchsia-200/70' : 'border-fuchsia-100 bg-white text-slate-600 hover:border-fuchsia-300 hover:text-fuchsia-600'}`}
+                    >
+                      #{tag}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-4 rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-xl shadow-cyan-100/60">

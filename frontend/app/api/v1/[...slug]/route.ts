@@ -26,6 +26,7 @@ import {
   uploadPostMediaToSupabase,
   withTransaction,
 } from '@/lib/server-api';
+import { findBoardBySlug, POST_BOARDS, POST_TAGS, sanitizePostTags } from '@/lib/post-taxonomy';
 
 export const runtime = 'nodejs';
 
@@ -62,6 +63,7 @@ async function handle(method: string, req: Request, slug: string[]) {
 
     if (slug[0] === 'posts' && slug.length === 1 && method === 'GET') return listPosts(req);
     if (slug[0] === 'posts' && slug.length === 1 && method === 'POST') return createPost(req);
+    if (slug[0] === 'posts' && slug[1] === 'taxonomy' && slug.length === 2 && method === 'GET') return ok({ boards: POST_BOARDS, tags: POST_TAGS });
     if (slug[0] === 'posts' && slug.length === 2 && method === 'GET') return getPost(slug[1], req);
     if (slug[0] === 'posts' && slug[2] === 'comments' && method === 'GET') return listComments(slug[1], req);
     if (slug[0] === 'posts' && slug[2] === 'comments' && method === 'POST') return createComment(req, slug[1]);
@@ -282,6 +284,8 @@ async function createPost(req: Request) {
   const title = String(body.title || '').trim();
   const content = String(body.content || '').trim();
   const postType = String(body.post_type || 'text').trim() || 'text';
+  const board = findBoardBySlug(String(body.board_slug || '').trim() || 'general');
+  const tags = sanitizePostTags(body.tags);
   const mediaURL = String(body.media_url || '').trim();
   const mediaType = String(body.media_type || '').trim();
   const posterURL = String(body.poster_url || '').trim();
@@ -301,12 +305,30 @@ async function createPost(req: Request) {
   const post = await withTransaction(async (client) => {
     const inserted = await client.query(
       `insert into posts (
-         author_id, title, content, post_type, media_url, media_type, poster_url, media_mime, media_size, media_width, media_height, duration_seconds,
+         author_id, title, content, post_type, board_slug, board_name, tags,
+         media_url, media_type, poster_url, media_mime, media_size, media_width, media_height, duration_seconds,
          status, visibility, like_count, favorite_count, comment_count, view_count, created_at, updated_at
        )
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'public', 0, 0, 0, 0, now(), now())
+       values ($1, $2, $3, $4, $5, $6, $7::text[], $8, $9, $10, $11, $12, $13, $14, $15, $16, 'public', 0, 0, 0, 0, now(), now())
        returning *`,
-      [claims.user_id, title, content, postType, mediaURL, mediaType, posterURL, mediaMime, mediaSize, mediaWidth, mediaHeight, durationSeconds, status],
+      [
+        claims.user_id,
+        title,
+        content,
+        postType,
+        board.slug,
+        board.name,
+        tags,
+        mediaURL,
+        mediaType,
+        posterURL,
+        mediaMime,
+        mediaSize,
+        mediaWidth,
+        mediaHeight,
+        durationSeconds,
+        status,
+      ],
     );
     await createModerationJob(client, 'post', inserted.rows[0].id, moderation.risk, moderation);
     return inserted.rows[0];
@@ -340,10 +362,18 @@ async function createComment(req: Request, idRaw: string) {
   const postID = parseID(idRaw);
   const body = await readJSON(req);
   const content = String(body.content || '').trim();
-  const parentID = body.parent_id ? Number(body.parent_id) : null;
+  const parentID = body.parent_id === null || body.parent_id === undefined || body.parent_id === '' ? null : parseID(String(body.parent_id));
   if (!content) return invalid('content required');
 
   const comment = await withTransaction(async (client) => {
+    if (parentID) {
+      const parentResult = await client.query('select id, post_id, status from comments where id = $1 limit 1', [parentID]);
+      if (!parentResult.rowCount) throw invalid('parent comment not found');
+      const parentComment = parentResult.rows[0];
+      if (Number(parentComment.post_id) !== postID) throw invalid('parent comment does not belong to this post');
+      if (String(parentComment.status) !== 'approved') throw invalid('parent comment unavailable');
+    }
+
     const inserted = await client.query(
       `insert into comments (post_id, author_id, parent_id, content, status, like_count, created_at, updated_at)
        values ($1, $2, $3, $4, $5, 0, now(), now())

@@ -59,6 +59,9 @@ export type Post = {
   title: string;
   content: string;
   post_type: string;
+  board_slug?: string;
+  board_name?: string;
+  tags?: string[];
   media_url?: string;
   media_type?: string;
   poster_url?: string;
@@ -76,7 +79,18 @@ export type Post = {
   favorited_by_me?: boolean;
   author?: User;
 };
-export type Comment = { id: number; content: string; status: string; like_count: number; liked_by_me?: boolean; author?: User; created_at: string };
+export type Comment = {
+  id: number;
+  post_id?: number;
+  author_id?: number;
+  parent_id?: number | null;
+  content: string;
+  status: string;
+  like_count: number;
+  liked_by_me?: boolean;
+  author?: User;
+  created_at: string;
+};
 export type Conversation = { id: number; title: string; persona_code: string; created_at: string };
 export type AIMessage = { id: number; role: string; content: string; safety_label: string; created_at: string };
 export type ModerationJob = {
@@ -124,4 +138,8 @@ export type UploadedMediaAsset = {
   media_type: 'image' | 'video';
   kind: 'image' | 'video' | 'poster';
   object_key: string;
+};
+export type PostTaxonomy = {
+  boards: Array<{ slug: string; name: string; description: string }>;
+  tags: string[];
 };

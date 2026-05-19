@@ -42,7 +42,19 @@ export function PostCard({ post }: { post: Post }) {
   return (
     <article className="card space-y-3">
       <div className="flex items-start justify-between gap-4">
-        <Link href={`/posts/${post.id}`} className="text-lg font-bold text-slate-950">{post.title}</Link>
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {post.board_name ? <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-700">{post.board_name}</span> : null}
+            {post.tags?.slice(0, 3).map((tag) => (
+              <span key={tag} className="rounded-full bg-fuchsia-50 px-3 py-1 text-xs font-semibold text-fuchsia-700">
+                #{tag}
+              </span>
+            ))}
+          </div>
+          <Link href={`/posts/${post.id}`} className="text-lg font-bold text-slate-950">
+            {post.title}
+          </Link>
+        </div>
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusMeta.className}`}>{statusMeta.label}</span>
       </div>
       {hasImage ? (
