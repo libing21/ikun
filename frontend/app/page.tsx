@@ -32,13 +32,13 @@ export default function HomePage() {
           <div className="card flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-black text-slate-900">热板块</p>
-              <p className="mt-1 text-sm text-slate-500">按最近活跃度自动排序，热板块会排在前面。</p>
+              <p className="mt-1 text-sm text-slate-500">首页先看最热的几个板块，完整统计放到板块广场里。</p>
             </div>
             <Link href="/boards" className="text-sm font-semibold text-fuchsia-600">
               查看完整板块广场
             </Link>
           </div>
-          <BoardPlazaGrid />
+          <BoardPlazaGrid compact limit={3} />
         </section>
         <HomePostFeed />
       </section>
