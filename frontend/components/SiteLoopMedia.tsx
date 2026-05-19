@@ -66,12 +66,6 @@ export function SiteLoopMedia() {
             ))}
           </div>
         </div>
-        <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-cyan-100">
-          <div
-            key={active.id}
-            className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-fuchsia-400 animate-media-progress"
-          />
-        </div>
         <div key={active.id} className="animate-soft-fade-in overflow-hidden rounded-[1.35rem] border border-cyan-100 bg-slate-950/5">
           {active.media_type === 'video' ? (
             <video

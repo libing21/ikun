@@ -227,7 +227,7 @@ async function listPosts(req: Request) {
   const offset = Number(url.searchParams.get('offset') || '0') || 0;
   const viewerID = optionalAuth(req)?.user_id || null;
   const result = await getPool().query(
-    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.role as author_role, u.status as author_status,
+    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.avatar_url as author_avatar_url, u.bio as author_bio, u.role as author_role, u.status as author_status,
             (pl.user_id is not null) as liked_by_me,
             (f.user_id is not null) as favorited_by_me
      from posts p
@@ -246,7 +246,7 @@ async function getPost(idRaw: string, req: Request) {
   const id = parseID(idRaw);
   const viewerID = optionalAuth(req)?.user_id || null;
   const result = await getPool().query(
-    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.role as author_role, u.status as author_status,
+    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.avatar_url as author_avatar_url, u.bio as author_bio, u.role as author_role, u.status as author_status,
             (pl.user_id is not null) as liked_by_me,
             (f.user_id is not null) as favorited_by_me
      from posts p
@@ -292,7 +292,7 @@ async function listComments(idRaw: string, req: Request) {
   const offset = Number(url.searchParams.get('offset') || '0') || 0;
   const viewerID = optionalAuth(req)?.user_id || null;
   const result = await getPool().query(
-    `select c.*, u.id as author_id, u.username as author_username, u.email as author_email, u.role as author_role, u.status as author_status,
+    `select c.*, u.id as author_id, u.username as author_username, u.email as author_email, u.avatar_url as author_avatar_url, u.bio as author_bio, u.role as author_role, u.status as author_status,
             (cl.user_id is not null) as liked_by_me
      from comments c
      left join users u on u.id = c.author_id
@@ -412,7 +412,7 @@ async function unfavoritePost(req: Request, idRaw: string) {
 async function myPosts(req: Request) {
   const claims = await requireAuth(req);
   const result = await getPool().query(
-    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.role as author_role, u.status as author_status,
+    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.avatar_url as author_avatar_url, u.bio as author_bio, u.role as author_role, u.status as author_status,
             (pl.user_id is not null) as liked_by_me,
             (f.user_id is not null) as favorited_by_me
      from posts p
@@ -429,7 +429,7 @@ async function myPosts(req: Request) {
 async function myFavorites(req: Request) {
   const claims = await requireAuth(req);
   const result = await getPool().query(
-    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.role as author_role, u.status as author_status,
+    `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.avatar_url as author_avatar_url, u.bio as author_bio, u.role as author_role, u.status as author_status,
             (pl.user_id is not null) as liked_by_me,
             true as favorited_by_me
      from favorites f

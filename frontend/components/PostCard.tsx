@@ -16,6 +16,8 @@ export function PostCard({ post }: { post: Post }) {
   const [likeCount, setLikeCount] = useState(post.like_count);
   const [message, setMessage] = useState('');
   const [heartPulse, setHeartPulse] = useState(0);
+  const authorName = post.author?.username || '匿名创作者';
+  const authorInitial = authorName.slice(0, 1).toUpperCase();
 
   async function toggleLike() {
     try {
@@ -42,8 +44,22 @@ export function PostCard({ post }: { post: Post }) {
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusMeta.className}`}>{statusMeta.label}</span>
       </div>
       <p className="line-clamp-3 text-sm text-slate-600">{post.content || '暂无正文'}</p>
-      <div className="flex flex-wrap gap-4 text-xs text-slate-500">
-        <span>作者：{post.author?.username || '匿名创作者'}</span>
+      <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+        <div className="flex items-center gap-2">
+          <div className="h-10 w-10 overflow-hidden rounded-2xl border border-fuchsia-100 bg-white shadow-sm">
+            {post.author?.avatar_url ? (
+              <img src={post.author.avatar_url} alt={`${authorName} 的头像`} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-fuchsia-100 to-cyan-100 text-sm font-black text-fuchsia-600">
+                {authorInitial}
+              </div>
+            )}
+          </div>
+          <div>
+            <p className="text-[11px] text-slate-400">作者</p>
+            <p className="font-semibold text-slate-600">{authorName}</p>
+          </div>
+        </div>
         <button type="button" onClick={toggleLike} className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs shadow-sm transition-transform duration-150 hover:-translate-y-0.5 active:scale-95 ${liked ? 'bg-rose-50 text-rose-600 shadow-rose-100' : 'bg-white text-slate-500'}`}>
           <svg key={heartPulse} viewBox="0 0 24 24" className={`h-4 w-4 ${heartPulse ? 'animate-heart-pop' : ''} ${liked ? 'fill-rose-500 stroke-rose-500' : 'fill-none stroke-current'}`} strokeWidth="2">
             <path d="M12 21s-6.716-4.35-9.193-8.165C.87 9.75 2.008 5.5 6.027 4.603A5.48 5.48 0 0 1 12 6.438a5.48 5.48 0 0 1 5.973-1.835c4.019.897 5.157 5.147 3.22 8.232C18.716 16.65 12 21 12 21Z" />

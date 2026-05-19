@@ -101,9 +101,20 @@ export default function PostDetailPage({ params }: { params: { id: string } }) {
         {comments.map((commentItem) => (
           <div key={commentItem.id} className="rounded-2xl bg-white/80 p-3 text-sm text-slate-700 shadow-sm">
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-semibold text-slate-800">{commentItem.author?.username || '匿名评论'}</p>
-                <p className="mt-1">{commentItem.content}</p>
+              <div className="flex items-start gap-3">
+                <div className="h-11 w-11 overflow-hidden rounded-2xl border border-fuchsia-100 bg-white shadow-sm">
+                  {commentItem.author?.avatar_url ? (
+                    <img src={commentItem.author.avatar_url} alt={`${commentItem.author?.username || '匿名评论'} 的头像`} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-fuchsia-100 to-cyan-100 text-sm font-black text-fuchsia-600">
+                      {(commentItem.author?.username || '匿').slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-800">{commentItem.author?.username || '匿名评论'}</p>
+                  <p className="mt-1">{commentItem.content}</p>
+                </div>
               </div>
               <button
                 type="button"

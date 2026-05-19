@@ -273,6 +273,8 @@ export function formatPost(row: any) {
           id: Number(row.author_id),
           username: row.author_username,
           email: row.author_email,
+          avatar_url: row.author_avatar_url || '',
+          bio: row.author_bio || '',
           role: row.author_role,
           status: row.author_status,
         }
@@ -297,6 +299,8 @@ export function formatComment(row: any) {
           id: Number(row.author_id),
           username: row.author_username,
           email: row.author_email,
+          avatar_url: row.author_avatar_url || '',
+          bio: row.author_bio || '',
           role: row.author_role,
           status: row.author_status,
         }
