@@ -18,6 +18,7 @@ const TARGET_STATUS_LABEL: Record<string, string> = {
 export default function AdminModerationPage() {
   const [jobs, setJobs] = useState<ModerationJob[]>([]);
   const [msg, setMsg] = useState('');
+  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
 
   async function load() {
     setJobs(await api<ModerationJob[]>('/admin/moderation/jobs'));
@@ -49,6 +50,9 @@ export default function AdminModerationPage() {
         const content = job.target_content?.trim() || '暂无正文';
         const isImagePost = job.target_type === 'post' && job.target_media_type === 'image' && Boolean(job.target_media_url);
         const isVideoPost = job.target_type === 'post' && job.target_media_type === 'video' && Boolean(job.target_media_url);
+        const durationText = job.target_duration_seconds
+          ? `${Math.floor(job.target_duration_seconds / 60)}:${String(job.target_duration_seconds % 60).padStart(2, '0')}`
+          : '未知时长';
 
         return (
           <article key={job.id} className="card space-y-3">
@@ -74,14 +78,19 @@ export default function AdminModerationPage() {
               <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="text-sm font-bold text-slate-800">媒体内容</p>
                 {isImagePost ? <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">图片帖</span> : null}
-                {isVideoPost ? <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">视频帖</span> : null}
+                {isVideoPost ? <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">视频帖 · {durationText}</span> : null}
                 {!isImagePost && !isVideoPost ? <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">文本帖 / 无媒体</span> : null}
               </div>
 
               {isImagePost ? (
-                <div className="overflow-hidden rounded-[1.5rem] border border-fuchsia-100 bg-slate-50 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setPreviewImage({ url: job.target_media_url || '', title: job.target_title || '审核图片' })}
+                  className="block w-full overflow-hidden rounded-[1.5rem] border border-fuchsia-100 bg-slate-50 shadow-sm"
+                >
                   <img src={job.target_media_url} alt={job.target_title || '审核图片'} className="max-h-[28rem] w-full object-contain" />
-                </div>
+                  <div className="border-t border-fuchsia-100 bg-white/90 px-4 py-3 text-left text-xs font-semibold text-fuchsia-600">点击查看大图</div>
+                </button>
               ) : null}
 
               {isVideoPost ? (
@@ -109,6 +118,22 @@ export default function AdminModerationPage() {
           </article>
         );
       })}
+
+      {previewImage ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4" onClick={() => setPreviewImage(null)}>
+          <div className="w-full max-w-6xl" onClick={(event) => event.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between text-white">
+              <p className="text-sm font-semibold">{previewImage.title}</p>
+              <button type="button" onClick={() => setPreviewImage(null)} className="bg-white/10 hover:bg-white/20">
+                关闭
+              </button>
+            </div>
+            <div className="overflow-hidden rounded-[1.8rem] bg-black/80 p-3 shadow-2xl">
+              <img src={previewImage.url} alt={previewImage.title} className="max-h-[82vh] w-full object-contain" />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

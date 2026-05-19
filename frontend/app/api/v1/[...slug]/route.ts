@@ -623,6 +623,7 @@ async function moderationJobs(req: Request) {
             p.media_type as post_media_type,
             p.media_url as post_media_url,
             p.poster_url as post_poster_url,
+            p.duration_seconds as post_duration_seconds,
             pu.username as post_author_username,
             c.content as comment_content,
             c.status as comment_status,
@@ -646,6 +647,7 @@ async function moderationJobs(req: Request) {
       target_media_type: row.post_media_type || '',
       target_media_url: row.post_media_url || '',
       target_poster_url: row.post_poster_url || '',
+      target_duration_seconds: Number(row.post_duration_seconds || 0),
     })),
   );
 }

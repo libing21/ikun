@@ -94,6 +94,7 @@ export type ModerationJob = {
   target_media_type?: string;
   target_media_url?: string;
   target_poster_url?: string;
+  target_duration_seconds?: number;
 };
 export type SiteLoopMediaItem = {
   id: number;

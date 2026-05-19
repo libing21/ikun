@@ -47,7 +47,9 @@ export function PostCard({ post }: { post: Post }) {
       </div>
       {hasImage ? (
         <Link href={`/posts/${post.id}`} className="block overflow-hidden rounded-[1.5rem] border border-fuchsia-100 bg-white/80 shadow-sm">
-          <img src={post.media_url} alt={post.title} className="h-72 w-full object-cover transition duration-300 hover:scale-[1.02]" />
+          <div className="bg-slate-50 p-2">
+            <img src={post.media_url} alt={post.title} className="max-h-[30rem] w-full object-contain" />
+          </div>
         </Link>
       ) : null}
       {hasVideo ? (
