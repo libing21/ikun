@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Pool, PoolClient } from 'pg';
+import { createClient } from '@supabase/supabase-js';
 
 type BackendEnvCache = Record<string, string>;
 
@@ -415,24 +416,24 @@ export async function uploadAvatarToSupabase(userID: number, file: File) {
 
   const ext = guessFileExtension(file.name || '', file.type || '');
   const objectKey = `avatars/${userID}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
-  const uploadURL = `${projectURL.replace(/\/$/, '')}/storage/v1/object/${bucket}/${objectKey}`;
-  const data = Buffer.from(await file.arrayBuffer());
-  const uploadRes = await fetch(uploadURL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${serviceRoleKey}`,
-      apikey: serviceRoleKey,
-      'Content-Type': file.type || 'application/octet-stream',
-      'x-upsert': 'true',
+  const supabase = createClient(projectURL, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
     },
-    body: data,
   });
-  if (!uploadRes.ok) {
-    const detail = await uploadRes.text();
-    throw new Error(`avatar upload failed: ${detail || uploadRes.statusText}`);
+  const data = Buffer.from(await file.arrayBuffer());
+  const uploadResult = await supabase.storage.from(bucket).upload(objectKey, data, {
+    contentType: file.type || 'application/octet-stream',
+    cacheControl: '3600',
+    upsert: true,
+  });
+  if (uploadResult.error) {
+    throw new Error(`avatar upload failed: ${uploadResult.error.message}`);
   }
 
-  return `${projectURL.replace(/\/$/, '')}/storage/v1/object/public/${bucket}/${objectKey}`;
+  const publicURL = supabase.storage.from(bucket).getPublicUrl(objectKey).data.publicUrl;
+  return publicURL;
 }
 
 export async function readJSON(req: Request) {
