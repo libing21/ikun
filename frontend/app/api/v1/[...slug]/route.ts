@@ -242,19 +242,38 @@ async function listPosts(req: Request) {
   const url = new URL(req.url);
   const limit = Math.min(Number(url.searchParams.get('limit') || '20') || 20, 100);
   const offset = Number(url.searchParams.get('offset') || '0') || 0;
+  const boardSlug = String(url.searchParams.get('board') || '').trim();
+  const tag = String(url.searchParams.get('tag') || '').trim();
   const viewerID = optionalAuth(req)?.user_id || null;
+  const conditions = [`p.status = 'published'`];
+  const params: Array<string | number | null> = [viewerID];
+
+  if (boardSlug) {
+    params.push(boardSlug);
+    conditions.push(`p.board_slug = $${params.length}`);
+  }
+  if (tag) {
+    params.push(tag);
+    conditions.push(`$${params.length} = any(coalesce(p.tags, '{}'::text[]))`);
+  }
+
+  params.push(limit);
+  const limitIndex = params.length;
+  params.push(offset);
+  const offsetIndex = params.length;
+
   const result = await getPool().query(
     `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.avatar_url as author_avatar_url, u.bio as author_bio, u.role as author_role, u.status as author_status,
             (pl.user_id is not null) as liked_by_me,
             (f.user_id is not null) as favorited_by_me
      from posts p
      left join users u on u.id = p.author_id
-     left join post_likes pl on pl.post_id = p.id and pl.user_id = $3
-     left join favorites f on f.post_id = p.id and f.user_id = $3
-     where p.status = 'published'
+     left join post_likes pl on pl.post_id = p.id and pl.user_id = $1
+     left join favorites f on f.post_id = p.id and f.user_id = $1
+     where ${conditions.join(' and ')}
      order by p.created_at desc
-     limit $1 offset $2`,
-    [limit, offset, viewerID],
+     limit $${limitIndex} offset $${offsetIndex}`,
+    params,
   );
   return ok(result.rows.map(formatPost));
 }

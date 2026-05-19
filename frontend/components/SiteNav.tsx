@@ -60,6 +60,7 @@ export function SiteNav() {
 
   return (
     <div className="flex items-center gap-4 text-sm">
+      <Link href="/boards">板块</Link>
       <Link href="/posts/create">发帖</Link>
       <Link href="/#feed">评论互动</Link>
       <Link href="/me">我的</Link>

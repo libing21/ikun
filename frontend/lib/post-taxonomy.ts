@@ -27,6 +27,10 @@ export const POST_TAGS = [
 
 export const DEFAULT_POST_BOARD = POST_BOARDS[0];
 
+export function isValidBoardSlug(slug: string) {
+  return POST_BOARDS.some((board) => board.slug === slug);
+}
+
 export function findBoardBySlug(slug: string) {
   return POST_BOARDS.find((board) => board.slug === slug) || DEFAULT_POST_BOARD;
 }

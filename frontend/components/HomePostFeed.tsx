@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { PostCard } from '@/components/PostCard';
 import { api, Post } from '@/lib/client';
@@ -93,6 +94,9 @@ export function HomePostFeed() {
     <div id="feed" className="space-y-4">
       {message ? <div className="card border-fuchsia-100 bg-fuchsia-50 text-sm text-fuchsia-700">{message}</div> : null}
       <div className="card flex flex-wrap items-center gap-2">
+        <Link href="/boards" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
+          板块广场
+        </Link>
         {boardOptions.map((board) => (
           <button
             key={board.slug}

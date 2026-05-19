@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { api, Comment, Post } from '@/lib/client';
 
@@ -194,11 +195,15 @@ export default function PostDetailPage({ params }: { params: { id: string } }) {
         <h1 className="text-3xl font-bold">{post.title}</h1>
         <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
           <span>作者：{post.author?.username || '匿名创作者'}</span>
-          {post.board_name ? <span className="rounded-full bg-cyan-50 px-3 py-1 text-cyan-700">{post.board_name}</span> : null}
+          {post.board_name && post.board_slug ? (
+            <Link href={`/boards/${post.board_slug}`} className="rounded-full bg-cyan-50 px-3 py-1 text-cyan-700 transition hover:bg-cyan-100">
+              {post.board_name}
+            </Link>
+          ) : null}
           {post.tags?.map((tag) => (
-            <span key={tag} className="rounded-full bg-fuchsia-50 px-3 py-1 text-fuchsia-700">
+            <Link key={tag} href={`/tags/${encodeURIComponent(tag)}`} className="rounded-full bg-fuchsia-50 px-3 py-1 text-fuchsia-700 transition hover:bg-fuchsia-100">
               #{tag}
-            </span>
+            </Link>
           ))}
           {post.media_type === 'image' ? <span className="rounded-full bg-cyan-50 px-3 py-1 text-cyan-700">图片帖</span> : null}
           {post.media_type === 'video' ? <span className="rounded-full bg-cyan-50 px-3 py-1 text-cyan-700">视频帖</span> : null}
