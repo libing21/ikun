@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { api, PostTaxonomy } from '@/lib/client';
+import { api, getToken, PostTaxonomy, User } from '@/lib/client';
+import { getBoardHeatMeta } from '@/lib/board-heat';
 import { POST_BOARDS, type PostBoard } from '@/lib/post-taxonomy';
 
 function formatBoardTime(value?: string) {
@@ -17,8 +18,21 @@ function formatBoardTime(value?: string) {
   });
 }
 
+function formatBoardTagTime(value?: string) {
+  if (!value) return '暂无';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '暂无';
+  return date.toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 type BoardWithStats = PostBoard & {
   post_count?: number;
+  today_post_count?: number;
   recent_post_count?: number;
   latest_post_at?: string;
 };
@@ -37,6 +51,7 @@ const TOP_BADGE_STYLES = [
 export function BoardPlazaGrid({ compact = false, limit }: BoardPlazaGridProps) {
   const [boards, setBoards] = useState<BoardWithStats[]>(POST_BOARDS);
   const [message, setMessage] = useState('');
+  const [canModerate, setCanModerate] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +68,23 @@ export function BoardPlazaGrid({ compact = false, limit }: BoardPlazaGridProps) 
         }
       });
 
+    const token = getToken();
+    if (token) {
+      api<User>('/auth/me')
+        .then((user) => {
+          if (!cancelled) {
+            setCanModerate(user.role === 'moderator' || user.role === 'admin');
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setCanModerate(false);
+          }
+        });
+    } else {
+      setCanModerate(false);
+    }
+
     return () => {
       cancelled = true;
     };
@@ -67,6 +99,7 @@ export function BoardPlazaGrid({ compact = false, limit }: BoardPlazaGridProps) 
         {visibleBoards.map((board, index) => {
           const isTopBoard = index < 3;
           const badgeStyle = TOP_BADGE_STYLES[index] || TOP_BADGE_STYLES[2];
+          const heat = getBoardHeatMeta(board);
           return (
           <Link
             key={board.slug}
@@ -77,6 +110,9 @@ export function BoardPlazaGrid({ compact = false, limit }: BoardPlazaGridProps) 
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-700">{board.name}</span>
+                  <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-black tracking-[0.16em] ${heat.className}`}>
+                    {heat.label}
+                  </span>
                   {isTopBoard ? (
                     <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-black tracking-[0.18em] ${badgeStyle}`}>
                       TOP {index + 1}
@@ -86,6 +122,15 @@ export function BoardPlazaGrid({ compact = false, limit }: BoardPlazaGridProps) 
                 <h2 className="text-xl font-black text-slate-900">{board.name}</h2>
                 <p className={`text-sm text-slate-600 ${compact ? 'line-clamp-2 leading-6' : 'leading-6'}`}>{board.description}</p>
               </div>
+
+              {canModerate ? (
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">今日发文 {board.today_post_count || 0}</span>
+                  <span className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">24h 活跃 {board.recent_post_count || 0}</span>
+                  <span className="rounded-full bg-fuchsia-50 px-3 py-1 text-[11px] font-semibold text-fuchsia-700">总帖 {board.post_count || 0}</span>
+                  <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">最后发文 {formatBoardTagTime(board.latest_post_at)}</span>
+                </div>
+              ) : null}
 
               {!compact ? (
                 <>

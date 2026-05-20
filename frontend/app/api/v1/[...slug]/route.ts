@@ -108,6 +108,7 @@ async function listPostTaxonomy() {
     `select
         p.board_slug,
         count(*)::int as post_count,
+        count(*) filter (where p.created_at >= date_trunc('day', now()))::int as today_post_count,
         count(*) filter (where p.created_at >= now() - interval '1 day')::int as recent_post_count,
         max(p.created_at) as latest_post_at
       from posts p
@@ -119,6 +120,7 @@ async function listPostTaxonomy() {
     string,
     {
       post_count: number;
+      today_post_count: number;
       recent_post_count: number;
       latest_post_at: string;
     }
@@ -127,6 +129,7 @@ async function listPostTaxonomy() {
   for (const row of statsResult.rows) {
     statsMap.set(String(row.board_slug || ''), {
       post_count: Number(row.post_count || 0),
+      today_post_count: Number(row.today_post_count || 0),
       recent_post_count: Number(row.recent_post_count || 0),
       latest_post_at: row.latest_post_at || '',
     });
@@ -135,9 +138,11 @@ async function listPostTaxonomy() {
   const boards = POST_BOARDS.map((board) => ({
     ...board,
     post_count: statsMap.get(board.slug)?.post_count || 0,
+    today_post_count: statsMap.get(board.slug)?.today_post_count || 0,
     recent_post_count: statsMap.get(board.slug)?.recent_post_count || 0,
     latest_post_at: statsMap.get(board.slug)?.latest_post_at || '',
   })).sort((a, b) => {
+    if (b.today_post_count !== a.today_post_count) return (b.today_post_count || 0) - (a.today_post_count || 0);
     if (b.recent_post_count !== a.recent_post_count) return (b.recent_post_count || 0) - (a.recent_post_count || 0);
     if (b.post_count !== a.post_count) return (b.post_count || 0) - (a.post_count || 0);
     const latestA = a.latest_post_at ? new Date(a.latest_post_at).getTime() : 0;

@@ -145,6 +145,7 @@ export type PostTaxonomy = {
     name: string;
     description: string;
     post_count?: number;
+    today_post_count?: number;
     recent_post_count?: number;
     latest_post_at?: string;
   }>;
