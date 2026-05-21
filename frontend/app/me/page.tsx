@@ -103,6 +103,7 @@ export default function MePage() {
               <div className="flex gap-4 text-sm font-semibold">
                 <a href="/me/posts">我的帖子</a>
                 <a href="/me/favorites">我的收藏</a>
+                <a href="/me/notifications">消息通知</a>
               </div>
               <button type="button" onClick={saveProfile}>保存资料</button>
             </div>

@@ -2,10 +2,13 @@ import { PoolClient } from 'pg';
 import {
   checkText,
   comparePassword,
+  createNotification,
   createModerationJob,
   ensureCommentLikesTable,
+  ensureCommunityOpsSchema,
   ensureSiteLoopMediaTable,
   formatComment,
+  formatNotification,
   formatPost,
   formatSiteLoopMedia,
   formatUser,
@@ -59,6 +62,9 @@ async function handle(method: string, req: Request, slug: string[]) {
     if (slug[0] === 'auth' && slug[1] === 'me' && method === 'GET') return me(req);
     if (slug[0] === 'me' && slug[1] === 'avatar' && method === 'POST') return uploadMyAvatar(req);
     if (slug[0] === 'me' && slug.length === 1 && method === 'PATCH') return updateMe(req);
+    if (slug[0] === 'me' && slug[1] === 'notifications' && slug[2] === 'unread-count' && slug.length === 3 && method === 'GET') return myNotificationsUnreadCount(req);
+    if (slug[0] === 'me' && slug[1] === 'notifications' && slug.length === 2 && method === 'GET') return myNotifications(req);
+    if (slug[0] === 'me' && slug[1] === 'notifications' && slug[3] === 'read' && method === 'POST') return markNotificationRead(req, slug[2]);
     if (slug[0] === 'uploads' && slug[1] === 'post-media' && slug.length === 2 && method === 'POST') return uploadPostMedia(req);
 
     if (slug[0] === 'posts' && slug.length === 1 && method === 'GET') return listPosts(req);
@@ -84,6 +90,8 @@ async function handle(method: string, req: Request, slug: string[]) {
 
     if (slug[0] === 'admin' && slug[1] === 'moderation' && slug[2] === 'jobs' && slug.length === 3 && method === 'GET') return moderationJobs(req);
     if (slug[0] === 'admin' && slug[1] === 'moderation' && slug[2] === 'jobs' && slug[4] === 'review' && method === 'POST') return reviewModerationJob(req, slug[3]);
+    if (slug[0] === 'admin' && slug[1] === 'overview' && slug.length === 2 && method === 'GET') return adminOverview(req);
+    if (slug[0] === 'admin' && slug[1] === 'posts' && slug[3] === 'ops' && slug.length === 4 && method === 'PATCH') return updateAdminPostOps(req, slug[2]);
     if (slug[0] === 'admin' && slug[1] === 'reports' && slug.length === 2 && method === 'GET') return adminReports(req);
     if (slug[0] === 'admin' && slug[1] === 'reports' && slug[3] === 'resolve' && method === 'POST') return resolveReport(req, slug[2]);
     if (slug[0] === 'admin' && slug[1] === 'site' && slug[2] === 'loop-media' && slug.length === 3 && method === 'GET') return adminSiteLoopMedia(req);
@@ -104,6 +112,7 @@ async function handle(method: string, req: Request, slug: string[]) {
 }
 
 async function listPostTaxonomy() {
+  await ensureCommunityOpsSchema();
   const statsResult = await getPool().query(
     `select
         p.board_slug,
@@ -260,6 +269,58 @@ async function updateMe(req: Request) {
   return ok(formatUser(updated.rows[0]));
 }
 
+async function myNotifications(req: Request) {
+  await ensureCommunityOpsSchema();
+  const claims = await requireAuth(req);
+  const url = new URL(req.url);
+  const limit = Math.min(Number(url.searchParams.get('limit') || '50') || 50, 100);
+  const result = await getPool().query(
+    `select n.*,
+            a.id as actor_id,
+            a.username as actor_username,
+            a.email as actor_email,
+            a.avatar_url as actor_avatar_url,
+            a.bio as actor_bio,
+            a.role as actor_role,
+            a.status as actor_status
+       from notifications n
+       left join users a on a.id = n.actor_id
+      where n.user_id = $1
+      order by n.created_at desc
+      limit $2`,
+    [claims.user_id, limit],
+  );
+  return ok(result.rows.map(formatNotification));
+}
+
+async function myNotificationsUnreadCount(req: Request) {
+  await ensureCommunityOpsSchema();
+  const claims = await requireAuth(req);
+  const result = await getPool().query(
+    `select count(*)::int as unread_count
+       from notifications
+      where user_id = $1 and is_read = false`,
+    [claims.user_id],
+  );
+  return ok({
+    unread_count: Number(result.rows[0]?.unread_count || 0),
+  });
+}
+
+async function markNotificationRead(req: Request, idRaw: string) {
+  await ensureCommunityOpsSchema();
+  const claims = await requireAuth(req);
+  const notificationID = parseID(idRaw);
+  await getPool().query(
+    `update notifications
+        set is_read = true,
+            read_at = coalesce(read_at, now())
+      where id = $1 and user_id = $2`,
+    [notificationID, claims.user_id],
+  );
+  return ok({ read: true });
+}
+
 async function uploadMyAvatar(req: Request) {
   const claims = await requireAuth(req);
   const formData = await req.formData();
@@ -293,6 +354,7 @@ async function uploadPostMedia(req: Request) {
 }
 
 async function listPosts(req: Request) {
+  await ensureCommunityOpsSchema();
   const url = new URL(req.url);
   const limit = Math.min(Number(url.searchParams.get('limit') || '20') || 20, 100);
   const offset = Number(url.searchParams.get('offset') || '0') || 0;
@@ -325,7 +387,7 @@ async function listPosts(req: Request) {
      left join post_likes pl on pl.post_id = p.id and pl.user_id = $1
      left join favorites f on f.post_id = p.id and f.user_id = $1
      where ${conditions.join(' and ')}
-     order by p.created_at desc
+     order by p.is_pinned desc, p.is_featured desc, coalesce(p.published_at, p.created_at) desc
      limit $${limitIndex} offset $${offsetIndex}`,
     params,
   );
@@ -333,6 +395,7 @@ async function listPosts(req: Request) {
 }
 
 async function getPost(idRaw: string, req: Request) {
+  await ensureCommunityOpsSchema();
   const id = parseID(idRaw);
   const viewerID = optionalAuth(req)?.user_id || null;
   const result = await getPool().query(
@@ -352,6 +415,7 @@ async function getPost(idRaw: string, req: Request) {
 }
 
 async function createPost(req: Request) {
+  await ensureCommunityOpsSchema();
   const claims = await requireAuth(req);
   const body = await readJSON(req);
   const title = String(body.title || '').trim();
@@ -431,6 +495,7 @@ async function listComments(idRaw: string, req: Request) {
 }
 
 async function createComment(req: Request, idRaw: string) {
+  await ensureCommunityOpsSchema();
   const claims = await requireAuth(req);
   const postID = parseID(idRaw);
   const body = await readJSON(req);
@@ -439,12 +504,22 @@ async function createComment(req: Request, idRaw: string) {
   if (!content) return invalid('content required');
 
   const comment = await withTransaction(async (client) => {
+    const postResult = await client.query('select id, title, author_id from posts where id = $1 limit 1', [postID]);
+    if (!postResult.rowCount) throw notFound('post not found');
+    const postRow = postResult.rows[0];
+    let parentAuthorID: number | null = null;
+    let parentAuthorName = '';
     if (parentID) {
-      const parentResult = await client.query('select id, post_id, status from comments where id = $1 limit 1', [parentID]);
+      const parentResult = await client.query(
+        'select c.id, c.post_id, c.status, c.author_id, u.username as author_username from comments c left join users u on u.id = c.author_id where c.id = $1 limit 1',
+        [parentID],
+      );
       if (!parentResult.rowCount) throw invalid('parent comment not found');
       const parentComment = parentResult.rows[0];
       if (Number(parentComment.post_id) !== postID) throw invalid('parent comment does not belong to this post');
       if (String(parentComment.status) !== 'approved') throw invalid('parent comment unavailable');
+      parentAuthorID = Number(parentComment.author_id || 0) || null;
+      parentAuthorName = String(parentComment.author_username || '');
     }
 
     const inserted = await client.query(
@@ -454,12 +529,37 @@ async function createComment(req: Request, idRaw: string) {
       [postID, claims.user_id, parentID, content, 'approved'],
     );
     await client.query('update posts set comment_count = comment_count + 1, updated_at = now() where id = $1', [postID]);
+    if (Number(postRow.author_id) !== claims.user_id) {
+      await createNotification(client, {
+        userID: Number(postRow.author_id),
+        actorID: claims.user_id,
+        type: 'post_comment',
+        title: '你的帖子有新评论',
+        content: `${content.slice(0, 48)}${content.length > 48 ? '...' : ''}`,
+        linkURL: `/posts/${postID}`,
+        entityType: 'post',
+        entityID: postID,
+      });
+    }
+    if (parentAuthorID && parentAuthorID !== claims.user_id && parentAuthorID !== Number(postRow.author_id)) {
+      await createNotification(client, {
+        userID: parentAuthorID,
+        actorID: claims.user_id,
+        type: 'comment_reply',
+        title: `@${parentAuthorName || '你'} 收到新回复`,
+        content: `${content.slice(0, 48)}${content.length > 48 ? '...' : ''}`,
+        linkURL: `/posts/${postID}`,
+        entityType: 'comment',
+        entityID: parentID,
+      });
+    }
     return inserted.rows[0];
   });
   return ok(formatComment(comment));
 }
 
 async function likePost(req: Request, idRaw: string) {
+  await ensureCommunityOpsSchema();
   const claims = await requireAuth(req);
   const postID = parseID(idRaw);
   await withTransaction(async (client) => {
@@ -468,13 +568,27 @@ async function likePost(req: Request, idRaw: string) {
       [claims.user_id, postID],
     );
     if (created.rowCount) {
-      await client.query('update posts set like_count = like_count + 1 where id = $1', [postID]);
+      const likedPost = await client.query('update posts set like_count = like_count + 1 where id = $1 returning id, title, author_id', [postID]);
+      const postRow = likedPost.rows[0];
+      if (postRow && Number(postRow.author_id) !== claims.user_id) {
+        await createNotification(client, {
+          userID: Number(postRow.author_id),
+          actorID: claims.user_id,
+          type: 'post_like',
+          title: '你的帖子收到了新点赞',
+          content: String(postRow.title || '').slice(0, 60),
+          linkURL: `/posts/${postID}`,
+          entityType: 'post',
+          entityID: postID,
+        });
+      }
     }
   });
   return ok({ liked: true });
 }
 
 async function likeComment(req: Request, idRaw: string) {
+  await ensureCommunityOpsSchema();
   const claims = await requireAuth(req);
   const commentID = parseID(idRaw);
   await ensureCommentLikesTable();
@@ -484,7 +598,23 @@ async function likeComment(req: Request, idRaw: string) {
       [claims.user_id, commentID],
     );
     if (created.rowCount) {
-      await client.query('update comments set like_count = like_count + 1, updated_at = now() where id = $1', [commentID]);
+      const likedComment = await client.query(
+        'update comments set like_count = like_count + 1, updated_at = now() where id = $1 returning id, author_id, post_id, content',
+        [commentID],
+      );
+      const commentRow = likedComment.rows[0];
+      if (commentRow && Number(commentRow.author_id) !== claims.user_id) {
+        await createNotification(client, {
+          userID: Number(commentRow.author_id),
+          actorID: claims.user_id,
+          type: 'comment_like',
+          title: '你的评论收到了新点赞',
+          content: String(commentRow.content || '').slice(0, 60),
+          linkURL: `/posts/${Number(commentRow.post_id)}`,
+          entityType: 'comment',
+          entityID: commentID,
+        });
+      }
     }
   });
   return ok({ liked: true });
@@ -543,6 +673,7 @@ async function unfavoritePost(req: Request, idRaw: string) {
 }
 
 async function myPosts(req: Request) {
+  await ensureCommunityOpsSchema();
   const claims = await requireAuth(req);
   const result = await getPool().query(
     `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.avatar_url as author_avatar_url, u.bio as author_bio, u.role as author_role, u.status as author_status,
@@ -560,6 +691,7 @@ async function myPosts(req: Request) {
 }
 
 async function myFavorites(req: Request) {
+  await ensureCommunityOpsSchema();
   const claims = await requireAuth(req);
   const result = await getPool().query(
     `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.avatar_url as author_avatar_url, u.bio as author_bio, u.role as author_role, u.status as author_status,
@@ -780,11 +912,93 @@ async function reviewModerationJob(req: Request, idRaw: string) {
 }
 
 async function reviewPost(client: PoolClient, postID: number, decision: string) {
+  await ensureCommunityOpsSchema();
+  const postResult = await client.query('select id, title, author_id from posts where id = $1 limit 1', [postID]);
+  const post = postResult.rows[0];
   if (decision === 'approved') {
     await client.query("update posts set status = 'published', published_at = now(), updated_at = now() where id = $1", [postID]);
   } else {
     await client.query("update posts set status = 'rejected', updated_at = now() where id = $1", [postID]);
   }
+  if (post?.author_id) {
+    await createNotification(client, {
+      userID: Number(post.author_id),
+      type: 'post_reviewed',
+      title: decision === 'approved' ? '你的帖子已通过审核' : '你的帖子未通过审核',
+      content: String(post.title || '').slice(0, 60),
+      linkURL: `/posts/${postID}`,
+      entityType: 'post',
+      entityID: postID,
+    });
+  }
+}
+
+async function adminOverview(req: Request) {
+  await ensureCommunityOpsSchema();
+  const claims = await requireAuth(req);
+  requireRole(claims.role, ['moderator', 'admin']);
+
+  const [statsResult, boardsResult, postsResult] = await Promise.all([
+    getPool().query(
+      `select
+          (select count(*)::int from posts where created_at >= date_trunc('day', now())) as today_posts,
+          (select count(*)::int from comments where created_at >= date_trunc('day', now()) and status = 'approved') as today_comments,
+          (select count(*)::int from posts where status = 'pending_review') as pending_posts,
+          (select count(*)::int from reports where status = 'open') as open_reports,
+          (select count(*)::int from users) as total_users,
+          (select count(*)::int from posts where status = 'published') as published_posts`,
+    ),
+    getPool().query(
+      `select p.board_slug, max(p.board_name) as board_name,
+              count(*) filter (where p.created_at >= date_trunc('day', now()))::int as today_post_count,
+              count(*) filter (where p.created_at >= now() - interval '1 day')::int as recent_post_count,
+              max(coalesce(p.published_at, p.created_at)) as latest_post_at
+         from posts p
+        where p.status = 'published'
+        group by p.board_slug
+        order by today_post_count desc, recent_post_count desc, latest_post_at desc
+        limit 5`,
+    ),
+    getPool().query(
+      `select p.*, u.id as author_id, u.username as author_username, u.email as author_email, u.avatar_url as author_avatar_url, u.bio as author_bio, u.role as author_role, u.status as author_status
+         from posts p
+         left join users u on u.id = p.author_id
+        where p.status = 'published'
+        order by p.is_pinned desc, p.is_featured desc, coalesce(p.published_at, p.created_at) desc
+        limit 8`,
+    ),
+  ]);
+
+  return ok({
+    stats: statsResult.rows[0],
+    hot_boards: boardsResult.rows.map((row) => ({
+      slug: row.board_slug || 'general',
+      name: row.board_name || findBoardBySlug(String(row.board_slug || 'general')).name,
+      today_post_count: Number(row.today_post_count || 0),
+      recent_post_count: Number(row.recent_post_count || 0),
+      latest_post_at: row.latest_post_at || '',
+    })),
+    recent_posts: postsResult.rows.map(formatPost),
+  });
+}
+
+async function updateAdminPostOps(req: Request, idRaw: string) {
+  await ensureCommunityOpsSchema();
+  const claims = await requireAuth(req);
+  requireRole(claims.role, ['moderator', 'admin']);
+  const postID = parseID(idRaw);
+  const body = await readJSON(req);
+  const updated = await getPool().query(
+    `update posts
+        set is_pinned = $2,
+            is_featured = $3,
+            updated_at = now()
+      where id = $1
+      returning *`,
+    [postID, body.is_pinned === true, body.is_featured === true],
+  );
+  if (!updated.rowCount) return notFound('post not found');
+  return ok(formatPost(updated.rows[0]));
 }
 
 async function adminReports(req: Request) {

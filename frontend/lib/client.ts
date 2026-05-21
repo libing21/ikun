@@ -28,6 +28,12 @@ export function clearToken() {
   }
 }
 
+export function emitNotificationsChanged() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('notifications-changed'));
+  }
+}
+
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
@@ -70,11 +76,14 @@ export type Post = {
   media_width?: number;
   media_height?: number;
   duration_seconds?: number;
+  is_pinned?: boolean;
+  is_featured?: boolean;
   status: string;
   like_count: number;
   favorite_count: number;
   comment_count: number;
   created_at: string;
+  published_at?: string;
   liked_by_me?: boolean;
   favorited_by_me?: boolean;
   author?: User;
@@ -131,6 +140,41 @@ export type GloryRankUser = {
   score: number;
 };
 export type Report = { id: number; target_type: string; target_id: number; reason_code: string; reason_text: string; status: string; created_at: string };
+export type NotificationItem = {
+  id: number;
+  type: string;
+  title: string;
+  content: string;
+  link_url: string;
+  entity_type: string;
+  entity_id: number | null;
+  is_read: boolean;
+  created_at: string;
+  read_at?: string | null;
+  actor?: User;
+};
+export type NotificationUnreadCount = {
+  unread_count: number;
+};
+export type AdminOverview = {
+  stats: {
+    today_posts: number;
+    today_comments: number;
+    pending_posts: number;
+    open_reports: number;
+    total_users: number;
+    published_posts: number;
+    unread_notifications?: number;
+  };
+  hot_boards: Array<{
+    slug: string;
+    name: string;
+    today_post_count: number;
+    recent_post_count: number;
+    latest_post_at?: string;
+  }>;
+  recent_posts: Post[];
+};
 export type UploadedMediaAsset = {
   url: string;
   mime: string;

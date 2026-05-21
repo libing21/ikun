@@ -194,6 +194,8 @@ export default function PostDetailPage({ params }: { params: { id: string } }) {
       <article className="card">
         <h1 className="text-3xl font-bold">{post.title}</h1>
         <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+          {post.is_pinned ? <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">置顶帖</span> : null}
+          {post.is_featured ? <span className="rounded-full bg-fuchsia-100 px-3 py-1 text-xs font-bold text-fuchsia-700">精华帖</span> : null}
           <span>作者：{post.author?.username || '匿名创作者'}</span>
           {post.board_name && post.board_slug ? (
             <Link href={`/boards/${post.board_slug}`} className="rounded-full bg-cyan-50 px-3 py-1 text-cyan-700 transition hover:bg-cyan-100">

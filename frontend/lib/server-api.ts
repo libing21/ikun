@@ -277,6 +277,8 @@ export function formatPost(row: any) {
     media_width: Number(row.media_width || 0),
     media_height: Number(row.media_height || 0),
     duration_seconds: Number(row.duration_seconds || 0),
+    is_pinned: Boolean(row.is_pinned),
+    is_featured: Boolean(row.is_featured),
     status: row.status,
     visibility: row.visibility,
     like_count: Number(row.like_count || 0),
@@ -344,6 +346,7 @@ export function formatUser(row: any) {
 
 let ensureSiteLoopMediaTablePromise: Promise<void> | null = null;
 let ensureCommentLikesTablePromise: Promise<void> | null = null;
+let ensureCommunityOpsSchemaPromise: Promise<void> | null = null;
 
 export async function ensureSiteLoopMediaTable() {
   if (!ensureSiteLoopMediaTablePromise) {
@@ -395,6 +398,103 @@ export async function ensureCommentLikesTable() {
     });
   }
   await ensureCommentLikesTablePromise;
+}
+
+export async function ensureCommunityOpsSchema() {
+  if (!ensureCommunityOpsSchemaPromise) {
+    ensureCommunityOpsSchemaPromise = (async () => {
+      await getPool().query(`
+        alter table posts
+          add column if not exists is_pinned boolean not null default false,
+          add column if not exists is_featured boolean not null default false
+      `);
+      await getPool().query(`
+        create index if not exists idx_posts_pinned_featured
+        on posts(is_pinned desc, is_featured desc, created_at desc)
+      `);
+      await getPool().query(`
+        create table if not exists notifications (
+          id bigserial primary key,
+          user_id bigint not null references users(id),
+          actor_id bigint references users(id),
+          type varchar(32) not null,
+          title varchar(120) not null default '',
+          content text not null default '',
+          link_url text not null default '',
+          entity_type varchar(20) not null default '',
+          entity_id bigint,
+          is_read boolean not null default false,
+          created_at timestamptz not null default now(),
+          read_at timestamptz
+        )
+      `);
+      await getPool().query(`
+        create index if not exists idx_notifications_user_read_created
+        on notifications(user_id, is_read, created_at desc)
+      `);
+    })().catch((error) => {
+      ensureCommunityOpsSchemaPromise = null;
+      throw error;
+    });
+  }
+  await ensureCommunityOpsSchemaPromise;
+}
+
+export async function createNotification(
+  client: PoolClient,
+  payload: {
+    userID: number;
+    actorID?: number | null;
+    type: string;
+    title: string;
+    content?: string;
+    linkURL?: string;
+    entityType?: string;
+    entityID?: number | null;
+  },
+) {
+  await client.query(
+    `insert into notifications (
+       user_id, actor_id, type, title, content, link_url, entity_type, entity_id, is_read, created_at
+     )
+     values ($1, $2, $3, $4, $5, $6, $7, $8, false, now())`,
+    [
+      payload.userID,
+      payload.actorID || null,
+      payload.type,
+      payload.title,
+      payload.content || '',
+      payload.linkURL || '',
+      payload.entityType || '',
+      payload.entityID || null,
+    ],
+  );
+}
+
+export function formatNotification(row: any) {
+  return {
+    id: Number(row.id),
+    type: row.type || '',
+    title: row.title || '',
+    content: row.content || '',
+    link_url: row.link_url || '',
+    entity_type: row.entity_type || '',
+    entity_id: row.entity_id ? Number(row.entity_id) : null,
+    is_read: Boolean(row.is_read),
+    created_at: row.created_at,
+    read_at: row.read_at || null,
+    actor: row.actor_id
+      ? {
+          id: Number(row.actor_id),
+          username: row.actor_username,
+          email: row.actor_email,
+          avatar_url: row.actor_avatar_url || '',
+          bio: row.actor_bio || '',
+          role: row.actor_role,
+          status: row.actor_status,
+        }
+      : undefined,
+  };
 }
 
 export function formatSiteLoopMedia(row: any) {

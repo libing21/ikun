@@ -44,6 +44,8 @@ export function PostCard({ post }: { post: Post }) {
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
+            {post.is_pinned ? <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-700">置顶</span> : null}
+            {post.is_featured ? <span className="rounded-full bg-fuchsia-100 px-3 py-1 text-xs font-black text-fuchsia-700">精华</span> : null}
             {post.board_name && post.board_slug ? (
               <Link href={`/boards/${post.board_slug}`} className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-700 transition hover:bg-cyan-100">
                 {post.board_name}

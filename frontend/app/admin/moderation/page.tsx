@@ -39,6 +39,7 @@ export default function AdminModerationPage() {
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">审核后台</h1>
         <div className="flex gap-3 text-sm font-semibold">
+          <a href="/admin" className="text-amber-700">运营总览</a>
           <a href="/admin/site-media" className="text-cyan-700">宗主放映位</a>
           <a href="/admin/reports" className="text-fuchsia-700">举报处理</a>
         </div>
